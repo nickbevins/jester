@@ -1,0 +1,628 @@
+/* Copyright (c) 2025 Nick Bevins. All rights reserved. */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    line-height: 1.6;
+}
+
+.app {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #2d2d2d;
+    min-height: 100vh;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.header {
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.nav {
+    display: flex;
+    background: #404040;
+    border-bottom: 1px solid #555;
+}
+
+.nav-btn {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    color: #ccc;
+}
+
+.nav-btn.active {
+    background: #2d2d2d;
+    border-bottom: 2px solid #4caf50;
+    color: #4caf50;
+    font-weight: 600;
+}
+
+.main {
+    padding: 1rem;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    margin-bottom: 1rem;
+    color: #66bb6a;
+    font-size: 1.25rem;
+}
+
+.player-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.player-form input,
+.player-form select,
+.player-form button {
+    padding: 0.75rem;
+    border: 1px solid #555;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #404040;
+    color: #e0e0e0;
+}
+
+.player-form button {
+    background: #4caf50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s ease;
+}
+
+.player-form button:hover {
+    background: #45a049;
+}
+
+.roster-status {
+    margin-bottom: 0.75rem;
+}
+
+#player-count {
+    font-size: 0.9rem;
+    color: #ccc;
+    background: #404040;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #555;
+}
+
+.roster-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.roster-controls button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.roster-controls button:hover {
+    background: #505050;
+}
+
+.import-export-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #555;
+}
+
+.import-export-controls button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+#export-csv-btn {
+    background: #4caf50;
+    color: white;
+    border-color: #4caf50;
+}
+
+#export-csv-btn:hover {
+    background: #45a049;
+}
+
+#import-csv-btn {
+    background: #2196f3;
+    color: white;
+    border-color: #2196f3;
+}
+
+#import-csv-btn:hover {
+    background: #1976d2;
+}
+
+.edit-name {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    background: #404040;
+    color: #e0e0e0;
+}
+
+.player-edit-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.edit-gender {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: #7c2d12;
+    color: #fed7aa;
+}
+
+.edit-skill {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: #1e3a8a;
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+.players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.player-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid #555;
+    border-radius: 8px;
+    background: #404040;
+    transition: all 0.3s ease;
+}
+
+.player-item.active {
+    border-color: #4caf50;
+    background: #2d4a2d;
+}
+
+.player-checkbox {
+    margin-right: 0.75rem;
+    transform: scale(1.2);
+}
+
+.player-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.player-name {
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.player-details {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    color: #ccc;
+    align-items: center;
+}
+
+.skill-badge {
+    background: #1e3a8a;
+    color: #93c5fd;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    width: 80px;
+    text-align: center;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.gender-badge {
+    background: #7c2d12;
+    color: #fed7aa;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    text-transform: capitalize;
+    width: 80px;
+    text-align: center;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.delete-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+
+.delete-btn:hover {
+    background: #d32f2f;
+}
+
+.match-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.form-group input {
+    padding: 0.5rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    font-size: 1rem;
+    width: 80px;
+    background: #404040;
+    color: #e0e0e0;
+}
+
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.option-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.option-btn:hover {
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.option-btn.active {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+#generate-matches-btn {
+    padding: 0.75rem;
+    background: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    margin-top: 0.5rem;
+}
+
+#generate-matches-btn:hover {
+    background: #f57c00;
+}
+
+#generate-matches-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.advanced-toggle {
+    margin-top: 0.75rem;
+}
+
+#advanced-toggle-btn {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+#advanced-toggle-btn:hover {
+    background: #505050;
+}
+
+.advanced-panel {
+    background: #404040;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.75rem;
+}
+
+.advanced-panel h3 {
+    margin: 0 0 0.5rem 0;
+    color: #66bb6a;
+    font-size: 1rem;
+}
+
+.advanced-help {
+    margin: 0 0 1rem 0;
+    color: #ccc;
+    font-size: 0.85rem;
+}
+
+.fixed-teams-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.fixed-team {
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.fixed-team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.remove-team-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-team-btn:hover {
+    background: #d32f2f;
+}
+
+.player-selectors {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.player-selectors select {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: #404040;
+    color: #e0e0e0;
+}
+
+#add-fixed-team-btn {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+#add-fixed-team-btn:hover {
+    background: #45a049;
+}
+
+.matches-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.court {
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 0.5rem;
+    background: #404040;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.court-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+
+.court-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #66bb6a;
+    line-height: 1;
+}
+
+.match-type-label {
+    font-size: 0.7rem;
+    color: #ccc;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.match {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+}
+
+.team {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    justify-content: center;
+}
+
+.team-players {
+    font-weight: 600;
+    color: #e0e0e0;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.vs {
+    font-weight: bold;
+    color: #ff9800;
+    margin: 0 0.5rem;
+    font-size: 0.8rem;
+}
+
+.sitting-players {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #555;
+}
+
+.sitting-header {
+    font-weight: 600;
+    color: #ccc;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.sitting-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sitting-player {
+    background: #505050;
+    color: #ccc;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid #666;
+}
+
+.empty-state {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    padding: 2rem;
+}
+
+@media (max-width: 480px) {
+    .app {
+        margin: 0;
+        box-shadow: none;
+    }
+    
+    .main {
+        padding: 0.75rem;
+    }
+    
+    .player-details {
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: flex-end;
+    }
+    
+    .match {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+    
+    .vs {
+        margin: 0.5rem 0;
+    }
+}
