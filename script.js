@@ -916,19 +916,7 @@ class Jester {
             return JSON.parse(saved);
         }
         
-        // Default test players for initial testing
-        return [
-            { id: 1, name: 'Alex Johnson', gender: 'male', skill: 4.0, active: true },
-            { id: 2, name: 'Sarah Williams', gender: 'female', skill: 3.5, active: true },
-            { id: 3, name: 'Mike Chen', gender: 'male', skill: 3.0, active: true },
-            { id: 4, name: 'Emma Davis', gender: 'female', skill: 4.5, active: true },
-            { id: 5, name: 'David Brown', gender: 'male', skill: 2.5, active: true },
-            { id: 6, name: 'Lisa Garcia', gender: 'female', skill: 4.0, active: true },
-            { id: 7, name: 'Tom Wilson', gender: 'male', skill: 3.5, active: true },
-            { id: 8, name: 'Anna Martinez', gender: 'female', skill: 3.0, active: true },
-            { id: 9, name: 'Chris Taylor', gender: 'male', skill: 4.5, active: true },
-            { id: 10, name: 'Maria Rodriguez', gender: 'female', skill: 2.5, active: true }
-        ];
+        return [];
     }
 
     savePlayers() {
