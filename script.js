@@ -411,7 +411,10 @@ class Jester {
             return;
         }
 
-        container.innerHTML = this.players.map(player => {
+        // Sort players alphabetically by name
+        const sortedPlayers = [...this.players].sort((a, b) => a.name.localeCompare(b.name));
+        
+        container.innerHTML = sortedPlayers.map(player => {
             if (this.editMode) {
                 return `
                 <div class="player-item ${player.active ? 'active' : ''}">

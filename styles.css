@@ -611,9 +611,22 @@ body {
     }
     
     .player-details {
-        flex-direction: column;
-        gap: 0.25rem;
-        align-items: flex-end;
+        flex-direction: row;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+    
+    .skill-badge {
+        width: 65px;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.35rem;
+    }
+    
+    .gender-badge {
+        width: 65px;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.35rem;
     }
     
     .match {
