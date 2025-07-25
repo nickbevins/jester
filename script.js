@@ -429,9 +429,17 @@ class Jester {
                                 <option value="male" ${player.gender === 'male' ? 'selected' : ''}>Male</option>
                                 <option value="female" ${player.gender === 'female' ? 'selected' : ''}>Female</option>
                             </select>
-                            <input type="number" class="edit-skill" value="${player.skill}" 
-                                   min="1" max="5" step="0.5"
-                                   onchange="app.updatePlayer(${player.id}, 'skill', this.value)">
+                            <select class="edit-skill" onchange="app.updatePlayer(${player.id}, 'skill', this.value)">
+                                <option value="1" ${player.skill == 1 ? 'selected' : ''}>1.0</option>
+                                <option value="1.5" ${player.skill == 1.5 ? 'selected' : ''}>1.5</option>
+                                <option value="2" ${player.skill == 2 ? 'selected' : ''}>2.0</option>
+                                <option value="2.5" ${player.skill == 2.5 ? 'selected' : ''}>2.5</option>
+                                <option value="3" ${player.skill == 3 ? 'selected' : ''}>3.0</option>
+                                <option value="3.5" ${player.skill == 3.5 ? 'selected' : ''}>3.5</option>
+                                <option value="4" ${player.skill == 4 ? 'selected' : ''}>4.0</option>
+                                <option value="4.5" ${player.skill == 4.5 ? 'selected' : ''}>4.5</option>
+                                <option value="5" ${player.skill == 5 ? 'selected' : ''}>5.0</option>
+                            </select>
                         </div>
                     </div>
                     <button class="delete-btn" onclick="app.deletePlayer(${player.id})">Delete</button>
@@ -450,7 +458,6 @@ class Jester {
                             <span class="gender-badge">${player.gender}</span>
                         </div>
                     </div>
-                    <button class="delete-btn" onclick="app.deletePlayer(${player.id})">Delete</button>
                 </div>
                 `;
             }
