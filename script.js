@@ -868,7 +868,7 @@ class Jester {
             let matchTypeLabel = 'Doubles';
             if (match.type === 'singles') {
                 matchTypeLabel = 'Singles';
-            } else if (match.team1.length === 3 || match.team2.length === 3) {
+            } else if (match.type === 'canadian') {
                 matchTypeLabel = 'Canadian';
             }
             
