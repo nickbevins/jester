@@ -369,6 +369,52 @@ body {
     color: white;
 }
 
+/* Court selection styles */
+.court-selection {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.court-btn {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #ccc;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    min-width: 40px;
+}
+
+.court-btn:hover {
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.court-btn.active {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+#courts-count {
+    padding: 0.5rem;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    width: 80px;
+}
+
+#courts-count:focus {
+    outline: none;
+    border-color: #4caf50;
+}
+
 #generate-matches-btn {
     padding: 0.75rem;
     background: #ff9800;

@@ -14,6 +14,7 @@ class Jester {
     init() {
         this.setupEventListeners();
         this.renderPlayers();
+        this.initializeCourtSelection();
     }
 
     setupEventListeners() {
@@ -38,6 +39,15 @@ class Jester {
             btn.addEventListener('click', (e) => this.selectOption(e.target));
         });
 
+        // Court button selection
+        document.querySelectorAll('.court-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.selectCourt(e.target));
+        });
+
+        // Court text input
+        document.getElementById('courts-count').addEventListener('input', () => this.onCourtInputChange());
+        document.getElementById('courts-count').addEventListener('focus', () => this.onCourtInputChange());
+
         // Generate matches
         document.getElementById('generate-matches-btn').addEventListener('click', () => this.generateMatches());
         
@@ -61,6 +71,56 @@ class Jester {
         
         // Add active to clicked button
         button.classList.add('active');
+    }
+
+    selectCourt(button) {
+        const courtNumber = button.dataset.court;
+        
+        // Remove active from all court buttons
+        document.querySelectorAll('.court-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active to clicked button
+        button.classList.add('active');
+        
+        // Clear the custom input when a button is selected
+        document.getElementById('courts-count').value = '';
+    }
+
+    onCourtInputChange() {
+        // Clear all button selections when text input is used
+        document.querySelectorAll('.court-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }
+
+    initializeCourtSelection() {
+        // Check if text input has a value on page load
+        const textInput = document.getElementById('courts-count');
+        if (textInput.value) {
+            // Clear any active buttons since text input has priority
+            document.querySelectorAll('.court-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
+    }
+
+    getCourtsCount() {
+        // Prioritize text input if it has a value
+        const customValue = document.getElementById('courts-count').value;
+        if (customValue && customValue.trim() !== '') {
+            return parseInt(customValue);
+        }
+        
+        // Otherwise check if a court button is active
+        const activeCourtBtn = document.querySelector('.court-btn.active');
+        if (activeCourtBtn) {
+            return parseInt(activeCourtBtn.dataset.court);
+        }
+        
+        // Default to 1 if nothing is selected
+        return 1;
     }
 
     switchTab(tabName) {
@@ -271,7 +331,9 @@ class Jester {
         const url = URL.createObjectURL(blob);
         
         link.setAttribute('href', url);
-        link.setAttribute('download', `tennis-roster-${new Date().toISOString().split('T')[0]}.csv`);
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // YYYY-MM-DDTHH-MM-SS
+        link.setAttribute('download', `tennis-roster-${timestamp}.csv`);
         link.style.visibility = 'hidden';
         
         document.body.appendChild(link);
@@ -466,11 +528,19 @@ class Jester {
 
     generateMatches() {
         const activePlayers = this.players.filter(p => p.active);
-        const courtsCount = parseInt(document.getElementById('courts-count').value);
+        const courtsCount = this.getCourtsCount();
         
         // Get selected options from button groups
-        const genderFilter = document.querySelector('.option-btn[data-option="gender"].active').dataset.value;
-        const skillBalance = document.querySelector('.option-btn[data-option="skill"].active').dataset.value;
+        const genderElement = document.querySelector('.option-btn[data-option="gender"].active');
+        const skillElement = document.querySelector('.option-btn[data-option="skill"].active');
+        
+        if (!genderElement || !skillElement) {
+            alert('Please make sure gender and skill options are selected');
+            return;
+        }
+        
+        const genderFilter = genderElement.dataset.value;
+        const skillBalance = skillElement.dataset.value;
 
         if (activePlayers.length < 4) {
             alert('Need at least 4 active players to generate matches');
@@ -497,156 +567,247 @@ class Jester {
     }
 
     createMatches(players, courtsCount, genderFilter, skillBalance) {
-        // Step 1: Create all doubles teams first
-        const result = this.createAllTeams(players, genderFilter, skillBalance);
-        const allTeams = result.teams;
-        const unmatchedPlayers = result.unmatchedPlayers;
-        
-        // Step 2: Shuffle teams to randomize matchups (except for Canadian doubles teams)
-        const regularTeams = allTeams.filter(team => team.length === 2);
-        const canadianTeams = allTeams.filter(team => team.length === 3);
-        
-        // Shuffle regular teams to avoid fixed teams always playing each other
-        for (let i = regularTeams.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [regularTeams[i], regularTeams[j]] = [regularTeams[j], regularTeams[i]];
-        }
-        
-        // Step 3: Assign teams to courts
         const matches = [];
-        let sittingPlayers = [...unmatchedPlayers];
+        let sittingPlayers = [];
         
-        // Calculate how many courts we need for regular doubles
-        const regularDoublesMatches = Math.floor(regularTeams.length / 2);
-        const courtsNeededForRegular = regularDoublesMatches;
-        
-        // Assign regular doubles matches first
-        for (let court = 0; court < Math.min(courtsNeededForRegular, courtsCount); court++) {
-            if (regularTeams.length >= 2) {
-                const team1 = regularTeams.shift();
-                const team2 = regularTeams.shift();
+        if (courtsCount * 4 >= players.length) {
+            // We have enough court capacity for everyone
+            if (players.length % 4 === 0) {
+                // Perfect for doubles only
+                matches.push(...this.createAllDoublesMatches(players, courtsCount, genderFilter, skillBalance));
+            } else {
+                // Need special court for leftover players
+                const doublesPlayerCount = Math.floor(players.length / 4) * 4;
+                const doublesPlayers = this.randomSelectPlayers(players, doublesPlayerCount);
+                const specialPlayers = players.filter(p => !doublesPlayers.some(dp => dp.id === p.id));
                 
-                matches.push({
-                    court: court + 1,
-                    team1: team1,
-                    team2: team2,
-                    type: 'doubles'
-                });
-            }
-        }
-        
-        // If we have remaining courts and a single team or unmatched player, try to create special matches
-        const remainingCourts = courtsCount - matches.length;
-        
-        if (remainingCourts > 0) {
-            // Handle Canadian doubles teams
-            for (const canadianTeam of canadianTeams) {
-                if (matches.length < courtsCount) {
-                    matches.push({
-                        court: matches.length + 1,
-                        team1: canadianTeam.slice(0, 2),
-                        team2: [canadianTeam[2]],
-                        type: 'canadian'
-                    });
-                } else {
-                    sittingPlayers.push(...canadianTeam);
+                // Create doubles matches
+                matches.push(...this.createAllDoublesMatches(doublesPlayers, Math.floor(doublesPlayerCount / 4), genderFilter, skillBalance));
+                
+                // Handle special court
+                if (specialPlayers.length >= 2) {
+                    matches.push(this.createSpecialMatch(specialPlayers, matches.length + 1));
+                } else if (specialPlayers.length === 1) {
+                    sittingPlayers.push(...specialPlayers);
                 }
             }
-            
-            // Prioritize Canadian doubles over singles if we have a single player and a team
-            if (matches.length < courtsCount && sittingPlayers.length === 1 && regularTeams.length >= 1) {
-                const singlePlayer = sittingPlayers.pop();
-                const team = regularTeams.shift();
-                
-                matches.push({
-                    court: matches.length + 1,
-                    team1: team,
-                    team2: [singlePlayer],
-                    type: 'canadian'
-                });
-            }
-            // Only create singles if we have exactly 1 team left and no single players to pair
-            else if (matches.length < courtsCount && regularTeams.length === 1 && sittingPlayers.length === 0) {
-                const team = regularTeams.shift();
-                matches.push({
-                    court: matches.length + 1,
-                    team1: [team[0]],
-                    team2: [team[1]],
-                    type: 'singles'
-                });
-            }
+        } else {
+            // Not enough court capacity - randomly select players
+            const selectedPlayers = this.randomSelectPlayers(players, courtsCount * 4);
+            sittingPlayers = players.filter(p => !selectedPlayers.some(sp => sp.id === p.id));
+            matches.push(...this.createAllDoublesMatches(selectedPlayers, courtsCount, genderFilter, skillBalance));
         }
         
-        // Step 4: Handle remaining teams
-        while (regularTeams.length > 0) {
-            const remainingTeam = regularTeams.shift();
-            sittingPlayers.push(...remainingTeam);
-        }
-
-        return {
-            matches: matches,
-            sittingPlayers: sittingPlayers
-        };
+        return { matches, sittingPlayers };
     }
 
-    createAllTeams(players, genderFilter, skillBalance) {
+    createAllDoublesMatches(players, courtsCount, genderFilter, skillBalance) {
+        const allTeams = [];
+        
+        // Get valid fixed teams first
+        const fixedTeams = this.getValidFixedTeams(players);
+        
+        // Remove fixed team players from available pool
         let availablePlayers = [...players];
-        const teams = [];
-        
-        // Step 1: Add all valid fixed teams first
-        const validFixedTeams = this.getValidFixedTeams(availablePlayers);
-        
-        for (const fixedTeam of validFixedTeams) {
-            teams.push(fixedTeam);
-            // Remove fixed team players from available pool
+        for (const fixedTeam of fixedTeams) {
             availablePlayers = availablePlayers.filter(p => 
                 !fixedTeam.some(fp => fp.id === p.id)
             );
         }
         
-        // Step 2: Create teams from remaining players
-        while (availablePlayers.length >= 2) {
+        // Create teams from remaining players following gender and skill rules
+        const generatedTeams = this.createTeamsFromPlayers(availablePlayers, genderFilter, skillBalance);
+        
+        // Combine fixed and generated teams, distributing fixed teams to avoid clustering
+        const combinedTeams = this.distributeFixedTeams(fixedTeams, generatedTeams);
+        
+        // Create matches based on skill balance setting
+        const matches = this.pairTeamsIntoMatches(combinedTeams, skillBalance);
+        
+        // Randomize court assignments
+        return this.randomizeCourtAssignments(matches);
+    }
+
+    createTeamsFromPlayers(availablePlayers, genderFilter, skillBalance) {
+        const teams = [];
+        let players = [...availablePlayers];
+        
+        while (players.length >= 2) {
             let team = null;
             
             if (genderFilter === 'mixed') {
-                team = this.createMixedTeam(availablePlayers, skillBalance);
+                team = this.createMixedTeam(players, skillBalance);
             } else if (genderFilter === 'same') {
-                team = this.createSameGenderTeam(availablePlayers, skillBalance);
-            } else {
-                team = this.createRandomTeam(availablePlayers, skillBalance);
+                team = this.createSameGenderTeam(players, skillBalance);
+            }
+            
+            // Fallback to random if preferred gender filter fails
+            if (!team || team.length !== 2) {
+                team = this.createRandomTeam(players, skillBalance);
             }
             
             if (team && team.length === 2) {
                 teams.push(team);
-                // Remove team players from available pool
-                availablePlayers = availablePlayers.filter(p => 
-                    !team.some(tp => tp.id === p.id)
-                );
+                players = players.filter(p => !team.some(tp => tp.id === p.id));
             } else {
-                // If we can't create the preferred team type, create any team
-                team = this.createRandomTeam(availablePlayers, skillBalance);
-                if (team && team.length === 2) {
-                    teams.push(team);
-                    availablePlayers = availablePlayers.filter(p => 
-                        !team.some(tp => tp.id === p.id)
-                    );
-                } else {
-                    break; // Can't create any more teams
-                }
+                break;
             }
         }
         
-        // Step 3: Handle single remaining player (Canadian doubles)
-        // Only create Canadian doubles if we have enough courts to accommodate it
-        if (availablePlayers.length === 1 && teams.length > 0) {
-            // We'll decide whether to create Canadian doubles in the court assignment phase
-            // For now, just leave the single player unmatched
+        return teams;
+    }
+
+    distributeFixedTeams(fixedTeams, generatedTeams) {
+        const allTeams = [];
+        const fixedCount = fixedTeams.length;
+        const generatedCount = generatedTeams.length;
+        const totalTeams = fixedCount + generatedCount;
+        
+        // If no fixed teams, just return generated teams
+        if (fixedCount === 0) {
+            return generatedTeams;
         }
         
-        return {
-            teams: teams,
-            unmatchedPlayers: availablePlayers
-        };
+        // Distribute fixed teams evenly throughout the list
+        let fixedIndex = 0;
+        let generatedIndex = 0;
+        
+        for (let i = 0; i < totalTeams; i++) {
+            const shouldPlaceFixed = fixedIndex < fixedCount && 
+                (generatedIndex >= generatedCount || 
+                 (i * fixedCount / totalTeams) >= fixedIndex);
+            
+            if (shouldPlaceFixed) {
+                allTeams.push(fixedTeams[fixedIndex]);
+                fixedIndex++;
+            } else {
+                allTeams.push(generatedTeams[generatedIndex]);
+                generatedIndex++;
+            }
+        }
+        
+        return allTeams;
+    }
+
+    pairTeamsIntoMatches(teams, skillBalance) {
+        const matches = [];
+        
+        if (skillBalance === 'balanced') {
+            // For balanced skill, pair teams with similar total skill
+            const teamsWithSkill = teams.map(team => ({
+                team: team,
+                totalSkill: team.reduce((sum, player) => sum + player.skill, 0)
+            }));
+            
+            // Sort by skill
+            teamsWithSkill.sort((a, b) => a.totalSkill - b.totalSkill);
+            
+            // Pair adjacent teams (similar skill levels)
+            for (let i = 0; i < teamsWithSkill.length - 1; i += 2) {
+                matches.push({
+                    court: matches.length + 1,
+                    team1: teamsWithSkill[i].team,
+                    team2: teamsWithSkill[i + 1].team,
+                    type: 'doubles'
+                });
+            }
+        } else {
+            // For random, shuffle teams first then pair sequentially
+            const shuffledTeams = [...teams];
+            for (let i = shuffledTeams.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledTeams[i], shuffledTeams[j]] = [shuffledTeams[j], shuffledTeams[i]];
+            }
+            
+            // Pair shuffled teams
+            for (let i = 0; i < shuffledTeams.length - 1; i += 2) {
+                matches.push({
+                    court: matches.length + 1,
+                    team1: shuffledTeams[i],
+                    team2: shuffledTeams[i + 1],
+                    type: 'doubles'
+                });
+            }
+        }
+        
+        return matches;
+    }
+
+    randomizeCourtAssignments(matches) {
+        const shuffledMatches = [...matches];
+        for (let i = shuffledMatches.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledMatches[i], shuffledMatches[j]] = [shuffledMatches[j], shuffledMatches[i]];
+        }
+        
+        // Reassign court numbers sequentially
+        shuffledMatches.forEach((match, index) => {
+            match.court = index + 1;
+        });
+        
+        return shuffledMatches;
+    }
+
+    createSpecialMatch(players, courtNumber) {
+        if (players.length === 3) {
+            // Canadian doubles - 2 vs 1
+            const shuffled = [...players];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return {
+                court: courtNumber,
+                team1: shuffled.slice(0, 2),
+                team2: [shuffled[2]],
+                type: 'canadian'
+            };
+        } else if (players.length === 2) {
+            // Singles
+            return {
+                court: courtNumber,
+                team1: [players[0]],
+                team2: [players[1]],
+                type: 'singles'
+            };
+        }
+        return null;
+    }
+
+    selectPlayingPlayers(players, maxPlayers, genderFilter, skillBalance) {
+        if (players.length <= maxPlayers) {
+            // Everyone can play
+            return [...players];
+        }
+        
+        // Always use random selection for fairness - skill preferences only apply to team formation
+        const shuffled = [...players];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, maxPlayers);
+    }
+
+    randomSelectPlayers(players, count) {
+        if (players.length <= count) {
+            return [...players];
+        }
+        
+        // Random selection using Fisher-Yates shuffle
+        const shuffled = [...players];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, count);
+    }
+
+    createRandomTeam(availablePlayers, skillBalance) {
+        if (availablePlayers.length >= 2) {
+            return this.selectBySkill(availablePlayers, 2, skillBalance);
+        }
+        return null;
     }
 
     createMixedTeam(availablePlayers, skillBalance) {
@@ -675,45 +836,278 @@ class Jester {
         return null;
     }
 
-    createRandomTeam(availablePlayers, skillBalance) {
-        if (availablePlayers.length >= 2) {
-            return this.selectBySkill(availablePlayers, 2, skillBalance);
-        }
-        return null;
-    }
-
-    getValidFixedTeams(availablePlayers) {
-        return this.fixedTeams
-            .filter(team => team.players && team.players.length === 2)
-            .filter(team => team.players.every(playerId => 
-                playerId && availablePlayers.some(p => p.id === playerId)
-            ))
-            .map(team => team.players.map(playerId => 
-                availablePlayers.find(p => p.id === playerId)
-            ));
-    }
-
-    selectMixedDoublesPartners(availablePlayers, fixedTeam, skillBalance) {
-        const fixedGenders = fixedTeam.map(p => p.gender);
-        const needMale = !fixedGenders.includes('male');
-        const needFemale = !fixedGenders.includes('female');
+    createBalancedMatches(teams) {
+        const matches = [];
+        const availableTeams = [...teams];
         
-        if (needMale && needFemale) {
-            // Need one of each gender
-            const males = availablePlayers.filter(p => p.gender === 'male');
-            const females = availablePlayers.filter(p => p.gender === 'female');
+        // Calculate team totals and sort by skill
+        const teamsWithSkills = availableTeams.map(team => ({
+            team: team,
+            totalSkill: team.reduce((sum, player) => sum + player.skill, 0)
+        })).sort((a, b) => a.totalSkill - b.totalSkill);
+        
+        // Pair teams to minimize skill difference
+        while (teamsWithSkills.length >= 2) {
+            const team1Data = teamsWithSkills.shift();
             
-            if (males.length > 0 && females.length > 0) {
-                return [males[0], females[0]];
+            // Find the best match for team1 (closest skill total)
+            let bestMatchIndex = 0;
+            let smallestDiff = Infinity;
+            
+            for (let i = 0; i < teamsWithSkills.length; i++) {
+                const diff = Math.abs(team1Data.totalSkill - teamsWithSkills[i].totalSkill);
+                if (diff < smallestDiff) {
+                    smallestDiff = diff;
+                    bestMatchIndex = i;
+                }
+            }
+            
+            const team2Data = teamsWithSkills.splice(bestMatchIndex, 1)[0];
+            
+            matches.push({
+                team1: team1Data.team,
+                team2: team2Data.team,
+                type: 'doubles'
+            });
+        }
+        
+        return matches;
+    }
+
+    calculateMaxCapacity(playerCount, courtsCount) {
+        // Calculate the maximum players that can be accommodated
+        const maxDoublesCourts = courtsCount;
+        const maxDoublesPlayers = maxDoublesCourts * 4;
+        
+        // If we have fewer players than max doubles capacity, everyone can play
+        if (playerCount <= maxDoublesPlayers) {
+            return playerCount;
+        }
+        
+        // If we have more players, we need to optimize court usage
+        // Try different combinations of doubles and special matches
+        for (let doubleCourts = courtsCount; doubleCourts >= 0; doubleCourts--) {
+            const specialCourts = courtsCount - doubleCourts;
+            const doublesPlayers = doubleCourts * 4;
+            
+            // Special courts can handle 2-3 players each
+            const maxSpecialPlayers = specialCourts * 3; // Maximum case
+            const minSpecialPlayers = specialCourts * 2; // Minimum case
+            
+            const maxCapacity = doublesPlayers + maxSpecialPlayers;
+            const minCapacity = doublesPlayers + minSpecialPlayers;
+            
+            if (playerCount >= minCapacity && playerCount <= maxCapacity) {
+                return playerCount; // Everyone can play
             }
         }
         
-        // Fallback to any 2 players
-        return this.selectBestPartners(availablePlayers, fixedTeam, skillBalance);
+        // Fallback to maximum possible
+        return maxDoublesPlayers + (courtsCount - maxDoublesCourts) * 3;
     }
 
-    selectSameGenderPartners(availablePlayers, fixedTeam, skillBalance) {
-        const fixedGender = fixedTeam[0].gender;
+    createDoublesMatches(playingPlayers, fixedTeams, courtsCount, genderFilter, skillBalance, sittingPlayers) {
+        const allMatches = [];
+        
+        // Create a combined pool of all teams (fixed + generated)
+        const allTeams = [];
+        
+        // Add fixed teams to the pool
+        allTeams.push(...fixedTeams);
+        
+        // Remove fixed team players from available pool
+        let availablePlayers = [...playingPlayers];
+        for (const fixedTeam of fixedTeams) {
+            availablePlayers = availablePlayers.filter(p => 
+                !fixedTeam.some(fp => fp.id === p.id)
+            );
+        }
+        
+        // Generate teams from remaining players and add to pool
+        while (availablePlayers.length >= 2) {
+            let team = null;
+            
+            if (genderFilter === 'mixed') {
+                team = this.createMixedTeam(availablePlayers, skillBalance);
+            } else if (genderFilter === 'same') {
+                team = this.createSameGenderTeam(availablePlayers, skillBalance);
+            } else {
+                team = this.createRandomTeam(availablePlayers, skillBalance);
+            }
+            
+            // If preferred team type fails, fall back to random
+            if (!team || team.length !== 2) {
+                team = this.createRandomTeam(availablePlayers, skillBalance);
+            }
+            
+            // If we successfully created a team, add it and remove players
+            if (team && team.length === 2) {
+                allTeams.push(team);
+                availablePlayers = availablePlayers.filter(p => 
+                    !team.some(tp => tp.id === p.id)
+                );
+            } else {
+                // Can't create any more teams, exit loop
+                break;
+            }
+        }
+        
+        // Create matches using appropriate pairing method based on skill balance
+        if (skillBalance === 'balanced') {
+            // For balanced teams, try to match teams with similar total skill
+            allMatches.push(...this.createBalancedMatches(allTeams));
+        } else {
+            // For random/similar individual skills, just randomly pair teams
+            const shuffledTeams = [...allTeams];
+            for (let i = shuffledTeams.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledTeams[i], shuffledTeams[j]] = [shuffledTeams[j], shuffledTeams[i]];
+            }
+            
+            // Create matches by pairing shuffled teams
+            for (let i = 0; i < shuffledTeams.length - 1; i += 2) {
+                const team1 = shuffledTeams[i];
+                const team2 = shuffledTeams[i + 1];
+                
+                allMatches.push({
+                    team1: team1,
+                    team2: team2,
+                    type: 'doubles'
+                });
+            }
+        }
+        
+        // Randomly shuffle matches before assigning courts
+        const shuffledMatches = [...allMatches];
+        for (let i = shuffledMatches.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledMatches[i], shuffledMatches[j]] = [shuffledMatches[j], shuffledMatches[i]];
+        }
+        
+        // Assign court numbers to matches
+        const finalMatches = shuffledMatches.slice(0, courtsCount).map((match, index) => ({
+            court: index + 1,
+            team1: match.team1,
+            team2: match.team2,
+            type: match.type
+        }));
+        
+        // Add any remaining players to sitting list
+        sittingPlayers.push(...availablePlayers);
+        
+        // Add any leftover teams to sitting list
+        if (shuffledTeams.length % 2 !== 0) {
+            const leftoverTeam = shuffledTeams[shuffledTeams.length - 1];
+            sittingPlayers.push(...leftoverTeam);
+        }
+        
+        return {
+            matches: finalMatches,
+            sittingPlayers: sittingPlayers
+        };
+    }
+
+    createMixedMatchesSimple(doublesPlayers, specialPlayers, courtsCount, genderFilter, skillBalance, sittingPlayers) {
+        const matches = [];
+        
+        // Create doubles matches from doubles players
+        if (doublesPlayers.length >= 4) {
+            const selectedFixedTeams = this.getValidFixedTeams(doublesPlayers);
+            const doublesResult = this.createDoublesMatches(
+                doublesPlayers, 
+                selectedFixedTeams, 
+                Math.floor(doublesPlayers.length / 4), 
+                genderFilter, 
+                skillBalance, 
+                []
+            );
+            matches.push(...doublesResult.matches);
+        }
+        
+        // Create special match from special players
+        if (specialPlayers.length >= 2) {
+            const courtNumber = matches.length + 1;
+            const specialFixedTeams = this.getValidFixedTeams(specialPlayers);
+            
+            if (specialPlayers.length === 3) {
+                // Canadian doubles
+                if (specialFixedTeams.length > 0) {
+                    // Use fixed team as one side
+                    const fixedTeam = specialFixedTeams[0];
+                    const singlePlayer = specialPlayers.find(p => !fixedTeam.some(fp => fp.id === p.id));
+                    matches.push({
+                        court: courtNumber,
+                        team1: fixedTeam,
+                        team2: [singlePlayer],
+                        type: 'canadian'
+                    });
+                } else {
+                    // Random assignment
+                    const shuffled = [...specialPlayers];
+                    for (let i = shuffled.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                    }
+                    matches.push({
+                        court: courtNumber,
+                        team1: shuffled.slice(0, 2),
+                        team2: [shuffled[2]],
+                        type: 'canadian'
+                    });
+                }
+            } else if (specialPlayers.length === 2) {
+                // Singles (split fixed team if they ended up here)
+                matches.push({
+                    court: courtNumber,
+                    team1: [specialPlayers[0]],
+                    team2: [specialPlayers[1]],
+                    type: 'singles'
+                });
+            }
+        }
+        
+        return {
+            matches: matches,
+            sittingPlayers: sittingPlayers
+        };
+    }
+
+
+
+    createOpponentTeam(availablePlayers, fixedTeam, genderFilter, skillBalance) {
+        if (availablePlayers.length < 2) return null;
+        
+        // Try to create an appropriate opponent based on gender filter
+        if (genderFilter === 'mixed') {
+            return this.createMixedOpponent(availablePlayers, fixedTeam, skillBalance);
+        } else if (genderFilter === 'same') {
+            return this.createSameGenderOpponent(availablePlayers, fixedTeam, skillBalance);
+        } else {
+            // Random - just pick any 2 players
+            return this.selectBySkill(availablePlayers, 2, skillBalance);
+        }
+    }
+
+    createMixedOpponent(availablePlayers, fixedTeam, skillBalance) {
+        const males = availablePlayers.filter(p => p.gender === 'male');
+        const females = availablePlayers.filter(p => p.gender === 'female');
+        
+        // Try to create a mixed opponent team (1 male + 1 female)
+        if (males.length > 0 && females.length > 0) {
+            const selectedMale = this.selectBySkill(males, 1, skillBalance)[0];
+            const selectedFemale = this.selectBySkill(females, 1, skillBalance)[0];
+            return [selectedMale, selectedFemale];
+        }
+        
+        // Fallback to any 2 players
+        return this.selectBySkill(availablePlayers, 2, skillBalance);
+    }
+
+    createSameGenderOpponent(availablePlayers, fixedTeam, skillBalance) {
+        const fixedGenders = fixedTeam.map(p => p.gender);
+        const fixedGender = fixedGenders[0]; // Assume fixed team has consistent gender for same-gender mode
+        
+        // Try to find players of the same gender as the fixed team
         const sameGenderPlayers = availablePlayers.filter(p => p.gender === fixedGender);
         
         if (sameGenderPlayers.length >= 2) {
@@ -721,38 +1115,82 @@ class Jester {
         }
         
         // Fallback to any 2 players
-        return this.selectBestPartners(availablePlayers, fixedTeam, skillBalance);
-    }
-
-    selectBestPartners(availablePlayers, fixedTeam, skillBalance) {
         return this.selectBySkill(availablePlayers, 2, skillBalance);
     }
 
-    createSpecialMatch(players, courtNumber) {
-        if (players.length === 2) {
-            // Singles match
-            return {
-                court: courtNumber,
-                team1: [players[0]],
-                team2: [players[1]],
-                type: 'singles'
-            };
-        } else if (players.length === 3) {
-            // Canadian doubles (2 vs 1)
-            const shuffled = [...players];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return {
-                court: courtNumber,
-                team1: shuffled.slice(0, 2),
-                team2: [shuffled[2]],
-                type: 'canadian'
-            };
+    createSingleMatch(availablePlayers, genderFilter, skillBalance) {
+        if (availablePlayers.length < 4) return null;
+        
+        let selectedPlayers = null;
+        
+        // First try to select 4 players based on gender preference
+        if (genderFilter === 'mixed') {
+            selectedPlayers = this.selectMixedDoublesPlayers(availablePlayers, skillBalance);
+        } else if (genderFilter === 'same') {
+            selectedPlayers = this.selectSameGenderPlayers(availablePlayers, skillBalance);
         }
-        return null;
+        
+        // Fallback to random selection if preferred method fails
+        if (!selectedPlayers) {
+            selectedPlayers = this.selectBestAvailablePlayers(availablePlayers, skillBalance);
+        }
+        
+        if (!selectedPlayers || selectedPlayers.length !== 4) return null;
+        
+        // Now form teams based on skill balance preference
+        if (skillBalance === 'balanced') {
+            return this.formTeams(selectedPlayers, skillBalance);
+        } else {
+            // For random or similar skills, create teams based on gender preference
+            if (genderFilter === 'mixed') {
+                return this.formMixedTeams(selectedPlayers, skillBalance);
+            } else if (genderFilter === 'same') {
+                return this.formSameGenderTeams(selectedPlayers, skillBalance);
+            } else {
+                return this.formTeams(selectedPlayers, skillBalance);
+            }
+        }
     }
+
+
+
+    getValidFixedTeams(availablePlayers) {
+        if (!this.fixedTeams || this.fixedTeams.length === 0) {
+            return [];
+        }
+        
+        const validTeams = [];
+        for (const team of this.fixedTeams) {
+            // Safety checks
+            if (!team || !team.players || !Array.isArray(team.players)) {
+                continue;
+            }
+            
+            if (team.players.length !== 2) {
+                continue;
+            }
+            
+            // Check if both players are available
+            const player1Id = team.players[0];
+            const player2Id = team.players[1];
+            
+            if (!player1Id || !player2Id) {
+                continue;
+            }
+            
+            const player1 = availablePlayers.find(p => p.id === player1Id);
+            const player2 = availablePlayers.find(p => p.id === player2Id);
+            
+            if (!player1 || !player2) {
+                continue;
+            }
+            
+            validTeams.push([player1, player2]);
+        }
+        
+        return validTeams;
+    }
+
 
     selectMixedDoublesPlayers(players, skillBalance) {
         const males = players.filter(p => p.gender === 'male');
@@ -860,6 +1298,88 @@ class Jester {
                 team1: shuffled.slice(0, 2),
                 team2: shuffled.slice(2, 4)
             };
+        }
+    }
+
+    formMixedTeams(players, skillBalance) {
+        const males = players.filter(p => p.gender === 'male');
+        const females = players.filter(p => p.gender === 'female');
+        
+        if (males.length >= 2 && females.length >= 2) {
+            // Ideal case: 2 males, 2 females - create M+F vs M+F
+            if (skillBalance === 'balanced') {
+                // Balance by combining male and female skills
+                const sortedMales = males.sort((a, b) => b.skill - a.skill);
+                const sortedFemales = females.sort((a, b) => b.skill - a.skill);
+                
+                // Try different combinations to balance team totals
+                const option1 = {
+                    team1: [sortedMales[0], sortedFemales[1]],
+                    team2: [sortedMales[1], sortedFemales[0]]
+                };
+                const option2 = {
+                    team1: [sortedMales[0], sortedFemales[0]],
+                    team2: [sortedMales[1], sortedFemales[1]]
+                };
+                
+                const diff1 = Math.abs(
+                    (option1.team1[0].skill + option1.team1[1].skill) - 
+                    (option1.team2[0].skill + option1.team2[1].skill)
+                );
+                const diff2 = Math.abs(
+                    (option2.team1[0].skill + option2.team1[1].skill) - 
+                    (option2.team2[0].skill + option2.team2[1].skill)
+                );
+                
+                return diff1 <= diff2 ? option1 : option2;
+            } else {
+                // Random pairing
+                const shuffledMales = [...males];
+                const shuffledFemales = [...females];
+                
+                for (let i = shuffledMales.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledMales[i], shuffledMales[j]] = [shuffledMales[j], shuffledMales[i]];
+                }
+                for (let i = shuffledFemales.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledFemales[i], shuffledFemales[j]] = [shuffledFemales[j], shuffledFemales[i]];
+                }
+                
+                return {
+                    team1: [shuffledMales[0], shuffledFemales[0]],
+                    team2: [shuffledMales[1], shuffledFemales[1]]
+                };
+            }
+        } else {
+            // Fallback to regular team formation if not enough of each gender
+            return this.formTeams(players, skillBalance);
+        }
+    }
+
+    formSameGenderTeams(players, skillBalance) {
+        const males = players.filter(p => p.gender === 'male');
+        const females = players.filter(p => p.gender === 'female');
+        
+        // Try to create same-gender matchups
+        if (males.length >= 4) {
+            // All males - create M+M vs M+M
+            return this.formTeams(males.slice(0, 4), skillBalance);
+        } else if (females.length >= 4) {
+            // All females - create F+F vs F+F  
+            return this.formTeams(females.slice(0, 4), skillBalance);
+        } else if (males.length >= 2 && females.length >= 2) {
+            // Mixed genders but try to keep teams same-gender: M+M vs F+F
+            const maleTeam = males.slice(0, 2);
+            const femaleTeam = females.slice(0, 2);
+            
+            return {
+                team1: maleTeam,
+                team2: femaleTeam
+            };
+        } else {
+            // Fallback to regular team formation
+            return this.formTeams(players, skillBalance);
         }
     }
 
