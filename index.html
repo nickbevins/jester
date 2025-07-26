@@ -76,8 +76,15 @@
                     <h2>Match Settings</h2>
                     <div class="match-form">
                         <div class="form-group">
-                            <label for="courts-count">Courts:</label>
-                            <input type="number" id="courts-count" min="1" max="10" value="2">
+                            <label>Courts:</label>
+                            <div class="court-selection">
+                                <button type="button" class="court-btn active" data-court="1">1</button>
+                                <button type="button" class="court-btn" data-court="2">2</button>
+                                <button type="button" class="court-btn" data-court="3">3</button>
+                                <button type="button" class="court-btn" data-court="4">4</button>
+                                <button type="button" class="court-btn" data-court="5">5</button>
+                                <input type="number" id="courts-count" min="1" max="10" placeholder="Other">
+                            </div>
                         </div>
                         
                         <div class="form-group">

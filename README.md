@@ -77,12 +77,42 @@ jester/
 
 ## Match Generation Algorithm
 
-The app uses sophisticated algorithms to create balanced matches:
-1. **Fisher-Yates Shuffle**: Ensures true randomization
-2. **Skill Balancing**: Multiple strategies for fair competition
-3. **Gender Preferences**: Flexible matching based on roster composition
-4. **Court Optimization**: Handles variable player counts and court availability
-5. **Special Matches**: Automatically creates Canadian doubles or singles when needed
+The app uses sophisticated algorithms to create balanced matches following this logic:
+
+### Court Capacity Logic
+- **Sufficient Courts** (`courts × 4 ≥ active players`):
+  - If player count is divisible by 4: Create all doubles matches
+  - If remainder exists: Create doubles + special court (singles/Canadian doubles)
+- **Limited Courts** (`courts × 4 < active players`):
+  - Randomly select `courts × 4` players for matches
+  - Remaining players sit out
+
+### Team Formation
+1. **Fixed Teams**: Pre-defined partnerships are included first and distributed evenly
+2. **Gender Rules**:
+   - **Mixed**: Creates male/female pairs when possible
+   - **Same**: Creates all-male or all-female teams
+   - **Random**: Any gender combination
+3. **Skill Balancing**:
+   - **Similar**: Groups players with similar individual skill levels
+   - **Random**: Completely random team selection
+   - **Balanced**: Used for match pairing (see below)
+
+### Match Pairing
+- **Random Skill**: Teams are randomly shuffled before pairing into matches
+- **Balanced Skill**: Teams are sorted by total team skill and paired with similar skill opponents
+- **Court Assignment**: All matches get randomized court numbers (fixed teams don't cluster)
+
+### Special Matches
+- **3 Players**: Canadian doubles (2 vs 1)
+- **2 Players**: Singles match
+- **1 Player**: Sits out
+
+### Key Features
+- **True Randomization**: Fisher-Yates shuffle algorithm
+- **Fixed Team Distribution**: Prevents clustering on early courts
+- **Fallback Logic**: Graceful handling when preferred gender combinations aren't possible
+- **Smart Court Usage**: Maximizes player participation within court constraints
 
 ## Contributing
 
