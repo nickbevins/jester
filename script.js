@@ -63,6 +63,7 @@ class Jester {
 
     selectOption(button) {
         const option = button.dataset.option;
+        const value = button.dataset.value;
         
         // Remove active from siblings
         button.parentNode.querySelectorAll('.option-btn').forEach(btn => {
@@ -71,6 +72,56 @@ class Jester {
         
         // Add active to clicked button
         button.classList.add('active');
+        
+        // Handle mode changes
+        if (option === 'mode') {
+            this.handleModeChange(value);
+        }
+    }
+
+    handleModeChange(mode) {
+        const genderButtons = document.querySelectorAll('.option-btn[data-option="gender"]');
+        const skillButtons = document.querySelectorAll('.option-btn[data-option="skill"]');
+        
+        if (mode === 'singles') {
+            // Disable mixed gender and team skill options for singles
+            genderButtons.forEach(btn => {
+                if (btn.dataset.value === 'mixed') {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                    if (btn.classList.contains('active')) {
+                        btn.classList.remove('active');
+                        // Default to 'same' for singles
+                        const sameBtn = document.querySelector('.option-btn[data-option="gender"][data-value="same"]');
+                        if (sameBtn) sameBtn.classList.add('active');
+                    }
+                }
+            });
+            
+            skillButtons.forEach(btn => {
+                if (btn.dataset.value === 'balanced') {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                    if (btn.classList.contains('active')) {
+                        btn.classList.remove('active');
+                        // Default to 'similar' for singles
+                        const similarBtn = document.querySelector('.option-btn[data-option="skill"][data-value="similar"]');
+                        if (similarBtn) similarBtn.classList.add('active');
+                    }
+                }
+            });
+        } else {
+            // Re-enable all options for doubles
+            genderButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('disabled');
+            });
+            
+            skillButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('disabled');
+            });
+        }
     }
 
     selectCourt(button) {
@@ -531,39 +582,49 @@ class Jester {
         const courtsCount = this.getCourtsCount();
         
         // Get selected options from button groups
+        const modeElement = document.querySelector('.option-btn[data-option="mode"].active');
         const genderElement = document.querySelector('.option-btn[data-option="gender"].active');
         const skillElement = document.querySelector('.option-btn[data-option="skill"].active');
         
-        if (!genderElement || !skillElement) {
-            alert('Please make sure gender and skill options are selected');
+        if (!modeElement || !genderElement || !skillElement) {
+            alert('Please make sure all options are selected');
             return;
         }
         
+        const mode = modeElement.dataset.value;
         const genderFilter = genderElement.dataset.value;
         const skillBalance = skillElement.dataset.value;
 
-        if (activePlayers.length < 4) {
-            alert('Need at least 4 active players to generate matches');
-            return;
+        if (mode === 'singles') {
+            if (activePlayers.length < 2) {
+                alert('Need at least 2 active players for singles matches');
+                return;
+            }
+            const result = this.createSinglesMatches(activePlayers, courtsCount, genderFilter, skillBalance);
+            this.renderMatches(result.matches, result.sittingPlayers);
+        } else {
+            if (activePlayers.length < 4) {
+                alert('Need at least 4 active players to generate doubles matches');
+                return;
+            }
+            // Calculate max courts we can use (allowing for special matches with 2-3 players)
+            const maxRegularMatches = Math.floor(activePlayers.length / 4);
+            const remainingPlayers = activePlayers.length % 4;
+            
+            // If we have 2-3 remaining players, we can use one more court for special match
+            const canUseExtraCourt = remainingPlayers >= 2;
+            const maxPossibleCourts = maxRegularMatches + (canUseExtraCourt ? 1 : 0);
+            
+            const actualCourts = Math.min(courtsCount, maxPossibleCourts);
+
+            if (actualCourts === 0) {
+                alert('Not enough players for any matches');
+                return;
+            }
+
+            const result = this.createMatches(activePlayers, actualCourts, genderFilter, skillBalance);
+            this.renderMatches(result.matches, result.sittingPlayers);
         }
-
-        // Calculate max courts we can use (allowing for special matches with 2-3 players)
-        const maxRegularMatches = Math.floor(activePlayers.length / 4);
-        const remainingPlayers = activePlayers.length % 4;
-        
-        // If we have 2-3 remaining players, we can use one more court for special match
-        const canUseExtraCourt = remainingPlayers >= 2;
-        const maxPossibleCourts = maxRegularMatches + (canUseExtraCourt ? 1 : 0);
-        
-        const actualCourts = Math.min(courtsCount, maxPossibleCourts);
-
-        if (actualCourts === 0) {
-            alert('Not enough players for any matches');
-            return;
-        }
-
-        const result = this.createMatches(activePlayers, actualCourts, genderFilter, skillBalance);
-        this.renderMatches(result.matches, result.sittingPlayers);
     }
 
     createMatches(players, courtsCount, genderFilter, skillBalance) {
@@ -599,6 +660,153 @@ class Jester {
         }
         
         return { matches, sittingPlayers };
+    }
+
+    createSinglesMatches(players, courtsCount, genderFilter, skillBalance) {
+        const matches = [];
+        let sittingPlayers = [];
+        
+        const maxPlayersNeeded = courtsCount * 2;
+        
+        if (maxPlayersNeeded >= players.length) {
+            // Enough court capacity for all or most players
+            if (players.length % 2 === 0) {
+                // Even number of players - create matches from all players
+                const playingPlayers = [...players];
+                matches.push(...this.createSinglesMatchesFromPlayers(playingPlayers, courtsCount, genderFilter, skillBalance));
+            } else {
+                // Odd number of players - randomly exclude one to sit
+                const shuffled = this.shuffleArray([...players]);
+                sittingPlayers.push(shuffled.pop());
+                const playingPlayers = shuffled;
+                matches.push(...this.createSinglesMatchesFromPlayers(playingPlayers, courtsCount, genderFilter, skillBalance));
+            }
+        } else {
+            // Not enough court capacity - randomly select players
+            const selectedPlayers = this.randomSelectPlayers(players, maxPlayersNeeded);
+            sittingPlayers = players.filter(p => !selectedPlayers.some(sp => sp.id === p.id));
+            matches.push(...this.createSinglesMatchesFromPlayers(selectedPlayers, courtsCount, genderFilter, skillBalance));
+        }
+        
+        return { matches, sittingPlayers };
+    }
+
+    createSinglesMatchesFromPlayers(players, courtsCount, genderFilter, skillBalance) {
+        const matches = [];
+        
+        // Create gender pools based on gender filter
+        let pools = [];
+        if (genderFilter === 'same') {
+            // Separate by gender
+            const males = players.filter(p => p.gender === 'male');
+            const females = players.filter(p => p.gender === 'female');
+            if (males.length > 0) pools.push(males);
+            if (females.length > 0) pools.push(females);
+        } else {
+            // 'any' gender - one pool
+            pools.push(players);
+        }
+        
+        let courtNumber = 1;
+        
+        // Create matches from each pool
+        for (const pool of pools) {
+            if (courtNumber > courtsCount) break;
+            
+            let poolPlayers = [...pool];
+            
+            // Create matches from this pool
+            while (poolPlayers.length >= 2 && courtNumber <= courtsCount) {
+                let player1, player2;
+                
+                if (skillBalance === 'similar') {
+                    // Match players with similar skills - improved algorithm
+                    const matchPair = this.findBestSkillPair(poolPlayers);
+                    if (matchPair) {
+                        [player1, player2] = matchPair;
+                        poolPlayers = poolPlayers.filter(p => p.id !== player1.id && p.id !== player2.id);
+                    } else {
+                        // Fallback to random if no similar match found
+                        const shuffled = this.shuffleArray(poolPlayers);
+                        player1 = shuffled[0];
+                        player2 = shuffled[1];
+                        poolPlayers = poolPlayers.filter(p => p.id !== player1.id && p.id !== player2.id);
+                    }
+                } else {
+                    // Random skill - just randomly pair players
+                    const shuffled = this.shuffleArray(poolPlayers);
+                    player1 = shuffled[0];
+                    player2 = shuffled[1];
+                    poolPlayers = poolPlayers.filter(p => p.id !== player1.id && p.id !== player2.id);
+                }
+                
+                matches.push({
+                    court: courtNumber,
+                    team1: [player1],
+                    team2: [player2],
+                    type: 'singles'
+                });
+                
+                courtNumber++;
+            }
+        }
+        
+        // Randomize court assignments for fairness
+        const shuffledMatches = this.shuffleArray(matches);
+        shuffledMatches.forEach((match, index) => {
+            match.court = index + 1;
+        });
+        
+        return shuffledMatches;
+    }
+
+    findBestSkillPair(players) {
+        if (players.length < 2) return null;
+        
+        // Shuffle players first to add variety, then sort by skill
+        const shuffled = this.shuffleArray(players);
+        const sorted = shuffled.sort((a, b) => a.skill - b.skill);
+        
+        // Randomly pick a starting player from the first few to add variety
+        const startIndex = Math.floor(Math.random() * Math.min(3, sorted.length));
+        const player1 = sorted[startIndex];
+        
+        // Find all players within 1 skill level
+        const validMatches = sorted.filter(p => 
+            p.id !== player1.id && Math.abs(p.skill - player1.skill) <= 1.0
+        );
+        
+        if (validMatches.length > 0) {
+            // Randomly pick from valid matches to add variety
+            const randomIndex = Math.floor(Math.random() * validMatches.length);
+            return [player1, validMatches[randomIndex]];
+        } else {
+            // Fallback: find the closest skill match
+            let bestMatch = sorted.find(p => p.id !== player1.id);
+            let bestSkillDiff = Math.abs(player1.skill - bestMatch.skill);
+            
+            for (const player of sorted) {
+                if (player.id === player1.id) continue;
+                const skillDiff = Math.abs(player1.skill - player.skill);
+                if (skillDiff < bestSkillDiff) {
+                    bestMatch = player;
+                    bestSkillDiff = skillDiff;
+                }
+            }
+            
+            return [player1, bestMatch];
+        }
+    }
+
+
+
+    shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
     }
 
     createAllDoublesMatches(players, courtsCount, genderFilter, skillBalance) {
