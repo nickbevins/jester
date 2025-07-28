@@ -8,6 +8,17 @@ class Jester {
         this.players = this.loadPlayers();
         this.editMode = false;
         this.fixedTeams = this.loadFixedTeams();
+        this.timer = {
+            duration: 0,
+            remaining: 0,
+            isRunning: false,
+            isPaused: false,
+            intervalId: null,
+            alerts: {
+                twoMin: false,
+                oneMin: false
+            }
+        };
         this.init();
     }
 
@@ -59,6 +70,14 @@ class Jester {
         document.getElementById('export-csv-btn').addEventListener('click', () => this.exportToCSV());
         document.getElementById('import-csv-btn').addEventListener('click', () => this.triggerImportCSV());
         document.getElementById('import-csv-input').addEventListener('change', (e) => this.importFromCSV(e));
+        
+        // Timer controls
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.setTimerPreset(parseInt(e.target.dataset.minutes)));
+        });
+        document.getElementById('start-timer-btn').addEventListener('click', () => this.startTimer());
+        document.getElementById('pause-timer-btn').addEventListener('click', () => this.pauseTimer());
+        document.getElementById('stop-timer-btn').addEventListener('click', () => this.stopTimer());
     }
 
     selectOption(button) {
@@ -1672,6 +1691,196 @@ class Jester {
 
     savePlayers() {
         localStorage.setItem('tennis-players', JSON.stringify(this.players));
+    }
+
+    // Timer functionality
+    async requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            const permission = await Notification.requestPermission();
+            return permission === 'granted';
+        }
+        return Notification.permission === 'granted';
+    }
+
+    setTimerPreset(minutes) {
+        document.getElementById('custom-minutes').value = minutes;
+        // Visual feedback for preset selection
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-minutes="${minutes}"]`).classList.add('active');
+    }
+
+    startTimer() {
+        const customMinutes = document.getElementById('custom-minutes').value;
+        if (!customMinutes || customMinutes <= 0) {
+            alert('Please enter a valid timer duration');
+            return;
+        }
+
+        // Request notification permission when starting timer
+        this.requestNotificationPermission();
+
+        // Set up timer
+        this.timer.duration = parseInt(customMinutes) * 60; // Convert to seconds
+        this.timer.remaining = this.timer.duration;
+        this.timer.isRunning = true;
+        this.timer.isPaused = false;
+        this.timer.alerts.twoMin = false;
+        this.timer.alerts.oneMin = false;
+
+        // Update UI
+        this.updateTimerButtons(true);
+        document.getElementById('timer-label').textContent = `${customMinutes} min timer running`;
+
+        // Start countdown
+        this.timer.intervalId = setInterval(() => {
+            this.tick();
+        }, 1000);
+
+        this.updateTimerDisplay();
+    }
+
+    pauseTimer() {
+        if (this.timer.isRunning) {
+            this.timer.isPaused = !this.timer.isPaused;
+            
+            if (this.timer.isPaused) {
+                clearInterval(this.timer.intervalId);
+                document.getElementById('pause-timer-btn').textContent = 'Resume';
+                document.getElementById('timer-label').textContent = 'Paused';
+            } else {
+                this.timer.intervalId = setInterval(() => {
+                    this.tick();
+                }, 1000);
+                document.getElementById('pause-timer-btn').textContent = 'Pause';
+                const minutes = Math.ceil(this.timer.remaining / 60);
+                document.getElementById('timer-label').textContent = `${minutes} min timer running`;
+            }
+        }
+    }
+
+    stopTimer() {
+        if (this.timer.intervalId) {
+            clearInterval(this.timer.intervalId);
+        }
+        
+        this.timer.isRunning = false;
+        this.timer.isPaused = false;
+        this.timer.remaining = 0;
+        
+        this.updateTimerButtons(false);
+        document.getElementById('time-display').textContent = '00:00';
+        document.getElementById('timer-label').textContent = 'Ready';
+        document.getElementById('pause-timer-btn').textContent = 'Pause';
+    }
+
+    tick() {
+        if (this.timer.isPaused) return;
+        
+        this.timer.remaining--;
+        this.updateTimerDisplay();
+
+        // Check for alerts
+        const alert2Min = document.getElementById('alert-2min').checked;
+        const alert1Min = document.getElementById('alert-1min').checked;
+
+        if (alert2Min && this.timer.remaining === 120 && !this.timer.alerts.twoMin) {
+            this.timer.alerts.twoMin = true;
+            this.showAlert('2 minutes remaining!', 'Get ready to rotate courts');
+        }
+
+        if (alert1Min && this.timer.remaining === 60 && !this.timer.alerts.oneMin) {
+            this.timer.alerts.oneMin = true;
+            this.showAlert('1 minute remaining!', 'Finish your current point');
+        }
+
+        if (this.timer.remaining <= 0) {
+            this.onTimerComplete();
+        }
+    }
+
+    updateTimerDisplay() {
+        const minutes = Math.floor(this.timer.remaining / 60);
+        const seconds = this.timer.remaining % 60;
+        const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('time-display').textContent = display;
+    }
+
+    updateTimerButtons(running) {
+        document.getElementById('start-timer-btn').disabled = running;
+        document.getElementById('pause-timer-btn').disabled = !running;
+        document.getElementById('stop-timer-btn').disabled = !running;
+    }
+
+    onTimerComplete() {
+        this.stopTimer();
+        this.showAlert('Time\'s up!', 'Round complete - time to rotate courts');
+        document.getElementById('timer-label').textContent = 'Time\'s up!';
+    }
+
+    showAlert(title, body) {
+        // Play sound
+        this.playAlertSound();
+        
+        // Vibrate if supported
+        if ('vibrate' in navigator) {
+            navigator.vibrate([300, 100, 300, 100, 300]);
+        }
+        
+        // Show notification
+        if (Notification.permission === 'granted') {
+            const notification = new Notification(title, {
+                body: body,
+                icon: '/manifest.json', // Will use app icon
+                badge: '/manifest.json',
+                vibrate: [300, 100, 300, 100, 300],
+                requireInteraction: true
+            });
+            
+            // Auto-close notification after 10 seconds
+            setTimeout(() => {
+                notification.close();
+            }, 10000);
+        }
+    }
+
+    playAlertSound() {
+        // Create audio context for sound generation
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Generate a beep sound
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz tone
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+            
+            // Play a second beep after a short delay
+            setTimeout(() => {
+                const oscillator2 = audioContext.createOscillator();
+                const gainNode2 = audioContext.createGain();
+                
+                oscillator2.connect(gainNode2);
+                gainNode2.connect(audioContext.destination);
+                
+                oscillator2.frequency.setValueAtTime(1000, audioContext.currentTime);
+                gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator2.start(audioContext.currentTime);
+                oscillator2.stop(audioContext.currentTime + 0.3);
+            }, 400);
+            
+        } catch (error) {
+            console.log('Audio context not available:', error);
+        }
     }
 }
 
