@@ -78,6 +78,11 @@ class Jester {
         document.getElementById('start-timer-btn').addEventListener('click', () => this.startTimer());
         document.getElementById('pause-timer-btn').addEventListener('click', () => this.pauseTimer());
         document.getElementById('stop-timer-btn').addEventListener('click', () => this.stopTimer());
+        
+        // Alert customization controls
+        document.getElementById('alert-volume').addEventListener('input', (e) => this.updateVolumeDisplay(e.target.value));
+        document.getElementById('test-sound-btn').addEventListener('click', () => this.testSound());
+        document.getElementById('test-vibration-btn').addEventListener('click', () => this.testVibration());
     }
 
     selectOption(button) {
@@ -1817,22 +1822,33 @@ class Jester {
         document.getElementById('timer-label').textContent = 'Time\'s up!';
     }
 
+    updateVolumeDisplay(value) {
+        document.getElementById('volume-display').textContent = `${value}%`;
+    }
+
+    testSound() {
+        this.playCustomSound();
+    }
+
+    testVibration() {
+        this.playCustomVibration();
+    }
+
     showAlert(title, body) {
-        // Play sound
-        this.playAlertSound();
+        // Play custom sound
+        this.playCustomSound();
         
-        // Vibrate if supported
-        if ('vibrate' in navigator) {
-            navigator.vibrate([300, 100, 300, 100, 300]);
-        }
+        // Play custom vibration
+        this.playCustomVibration();
         
         // Show notification
         if (Notification.permission === 'granted') {
+            const vibrationPattern = this.getVibrationPattern();
             const notification = new Notification(title, {
                 body: body,
-                icon: '/manifest.json', // Will use app icon
+                icon: '/manifest.json',
                 badge: '/manifest.json',
-                vibrate: [300, 100, 300, 100, 300],
+                vibrate: vibrationPattern,
                 requireInteraction: true
             });
             
@@ -1843,43 +1859,150 @@ class Jester {
         }
     }
 
-    playAlertSound() {
-        // Create audio context for sound generation
+    playCustomSound() {
+        const soundType = document.getElementById('alert-sound').value;
+        const volume = document.getElementById('alert-volume').value / 100;
+
+        if (soundType === 'none') return;
+
         try {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Generate a beep sound
+            switch (soundType) {
+                case 'beep':
+                    this.playBeepSound(audioContext, volume);
+                    break;
+                case 'chime':
+                    this.playChimeSound(audioContext, volume);
+                    break;
+                case 'bell':
+                    this.playBellSound(audioContext, volume);
+                    break;
+                case 'buzzer':
+                    this.playBuzzerSound(audioContext, volume);
+                    break;
+            }
+        } catch (error) {
+            console.log('Audio context not available:', error);
+        }
+    }
+
+    playBeepSound(audioContext, volume) {
+        // Original double beep
+        const oscillator1 = audioContext.createOscillator();
+        const gainNode1 = audioContext.createGain();
+        
+        oscillator1.connect(gainNode1);
+        gainNode1.connect(audioContext.destination);
+        
+        oscillator1.frequency.setValueAtTime(800, audioContext.currentTime);
+        gainNode1.gain.setValueAtTime(volume, audioContext.currentTime);
+        gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator1.start(audioContext.currentTime);
+        oscillator1.stop(audioContext.currentTime + 0.3);
+        
+        // Second beep
+        setTimeout(() => {
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode2 = audioContext.createGain();
+            
+            oscillator2.connect(gainNode2);
+            gainNode2.connect(audioContext.destination);
+            
+            oscillator2.frequency.setValueAtTime(1000, audioContext.currentTime);
+            gainNode2.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator2.start(audioContext.currentTime);
+            oscillator2.stop(audioContext.currentTime + 0.3);
+        }, 400);
+    }
+
+    playChimeSound(audioContext, volume) {
+        // Pleasant ascending chime
+        const frequencies = [523, 659, 784]; // C, E, G
+        frequencies.forEach((freq, index) => {
+            setTimeout(() => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }, index * 150);
+        });
+    }
+
+    playBellSound(audioContext, volume) {
+        // Bell-like sound with harmonics
+        const fundamental = 440;
+        const harmonics = [1, 2, 3, 4];
+        
+        harmonics.forEach(harmonic => {
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz tone
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            oscillator.frequency.setValueAtTime(fundamental * harmonic, audioContext.currentTime);
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(volume / (harmonic * 2), audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.5);
             
             oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.3);
-            
-            // Play a second beep after a short delay
-            setTimeout(() => {
-                const oscillator2 = audioContext.createOscillator();
-                const gainNode2 = audioContext.createGain();
-                
-                oscillator2.connect(gainNode2);
-                gainNode2.connect(audioContext.destination);
-                
-                oscillator2.frequency.setValueAtTime(1000, audioContext.currentTime);
-                gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                
-                oscillator2.start(audioContext.currentTime);
-                oscillator2.stop(audioContext.currentTime + 0.3);
-            }, 400);
-            
-        } catch (error) {
-            console.log('Audio context not available:', error);
+            oscillator.stop(audioContext.currentTime + 1.5);
+        });
+    }
+
+    playBuzzerSound(audioContext, volume) {
+        // Urgent buzzer sound
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+        oscillator.type = 'sawtooth';
+        gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.8);
+    }
+
+    playCustomVibration() {
+        if ('vibrate' in navigator) {
+            const pattern = this.getVibrationPattern();
+            navigator.vibrate(pattern);
+        }
+    }
+
+    getVibrationPattern() {
+        const patternType = document.getElementById('vibration-pattern').value;
+        
+        switch (patternType) {
+            case 'short':
+                return [200];
+            case 'long':
+                return [800];
+            case 'double':
+                return [200, 100, 200];
+            case 'pulse':
+                return [300, 100, 300, 100, 300];
+            case 'none':
+                return [];
+            default:
+                return [300, 100, 300, 100, 300];
         }
     }
 }

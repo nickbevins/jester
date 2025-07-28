@@ -6,6 +6,7 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 
 - **Player Management**: Add, edit, and manage your tennis player roster
 - **Singles & Doubles Modes**: Choose between 1v1 singles or 2v2 doubles matches
+- **Match Timer**: Built-in countdown timer with alerts for managing match rotations
 - **Smart Match Generation**: Create balanced matches with customizable preferences
 - **Multiple Match Types**: Supports doubles, singles, and Canadian doubles (2v1)
 - **Flexible Options**: 
@@ -14,8 +15,8 @@ A Progressive Web App for generating balanced tennis matches (singles and double
   - Skill balancing (random, individual similarity, or team balance)
   - Fixed teammate pairs (doubles mode only)
 - **CSV Import/Export**: Share and backup your player rosters
-- **Mobile Optimized**: Responsive design with dark theme
-- **Offline Support**: Works without internet connection (PWA)
+- **Mobile Optimized**: Responsive design with dark theme  
+- **PWA Features**: Installable app with offline support and background notifications
 
 ## Quick Start
 
@@ -42,6 +43,18 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 5. Use Advanced Settings for fixed teammate pairs (doubles mode only)
 6. Click "Generate Matches"
 
+### Using the Timer
+1. Go to the "Timer" tab
+2. Set duration using preset buttons (15, 18, 20, 30 minutes) or enter custom time
+3. Configure early alerts (1 and/or 2 minutes before end)
+4. Customize alert preferences:
+   - **Sound**: Choose from Double Beep, Chime, Bell, Buzzer, or Silent
+   - **Volume**: Adjust alert volume (0-100%)
+   - **Vibration**: Select from Pulse, Short, Long, Double Tap, or Off
+5. Test your settings with the "Test" buttons
+6. Click "Start Timer" and grant notification permissions when prompted
+7. Timer will alert you with your customized sound and vibration at configured intervals
+
 #### Singles Mode Options
 - **Gender**:
   - **Any**: Players can face any opponent regardless of gender
@@ -56,6 +69,8 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
 - **Bulk Operations**: Select/clear all players quickly
 - **CSV Export/Import**: Share rosters between devices or backup data
+- **Background Timer**: Timer continues running when app is minimized via notifications
+- **Customizable Alerts**: Choose from multiple sound types, adjust volume, and select vibration patterns
 
 ## Technical Details
 

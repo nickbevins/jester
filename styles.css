@@ -818,6 +818,116 @@ body {
     cursor: not-allowed;
 }
 
+/* Alert customization styles */
+.alert-select {
+    flex: 1;
+    padding: 0.5rem;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+}
+
+.alert-select:focus {
+    outline: none;
+    border-color: #4caf50;
+}
+
+.test-btn {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    min-width: 50px;
+}
+
+.test-btn:hover {
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.test-btn:active {
+    background: #4caf50;
+    color: white;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #555;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4caf50;
+    cursor: pointer;
+    border: 2px solid #2e7d32;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4caf50;
+    cursor: pointer;
+    border: 2px solid #2e7d32;
+}
+
+.volume-slider::-webkit-slider-track {
+    background: #555;
+    height: 6px;
+    border-radius: 3px;
+}
+
+.volume-slider::-moz-range-track {
+    background: #555;
+    height: 6px;
+    border-radius: 3px;
+}
+
+#volume-display {
+    font-size: 0.9rem;
+    color: #4caf50;
+    font-weight: 600;
+    min-width: 40px;
+    text-align: right;
+}
+
+/* Enhanced form groups for alert controls */
+.form-group:has(.alert-select), 
+.form-group:has(.volume-control) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group:has(.alert-select) > div,
+.form-group:has(.volume-control) > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 @media (max-width: 480px) {
     .app {
         margin: 0;
@@ -880,5 +990,32 @@ body {
     .timer-btn {
         padding: 1rem;
         font-size: 1.1rem;
+    }
+    
+    /* Alert customization mobile styles */
+    .test-btn {
+        min-width: 45px;
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    .alert-select {
+        font-size: 0.85rem;
+        padding: 0.4rem;
+    }
+    
+    .volume-slider::-webkit-slider-thumb {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .volume-slider::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+    }
+    
+    #volume-display {
+        font-size: 0.8rem;
+        min-width: 35px;
     }
 }
