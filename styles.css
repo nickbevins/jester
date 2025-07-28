@@ -369,6 +369,21 @@ body {
     color: white;
 }
 
+.option-btn.disabled,
+.option-btn:disabled {
+    background: #2a2a2a;
+    border-color: #333;
+    color: #666;
+    cursor: not-allowed;
+}
+
+.option-btn.disabled:hover,
+.option-btn:disabled:hover {
+    background: #2a2a2a;
+    border-color: #333;
+    color: #666;
+}
+
 /* Court selection styles */
 .court-selection {
     display: flex;
