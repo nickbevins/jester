@@ -693,71 +693,84 @@ class Jester {
 
     createSinglesMatchesFromPlayers(players, courtsCount, genderFilter, skillBalance) {
         const matches = [];
+        let remainingPlayers = [...players];
         
-        // Create gender pools based on gender filter
-        let pools = [];
         if (genderFilter === 'same') {
-            // Separate by gender
-            const males = players.filter(p => p.gender === 'male');
-            const females = players.filter(p => p.gender === 'female');
-            if (males.length > 0) pools.push(males);
-            if (females.length > 0) pools.push(females);
-        } else {
-            // 'any' gender - one pool
-            pools.push(players);
-        }
-        
-        let courtNumber = 1;
-        
-        // Create matches from each pool
-        for (const pool of pools) {
-            if (courtNumber > courtsCount) break;
+            // Try to create same-gender matches first, then be flexible
+            const males = remainingPlayers.filter(p => p.gender === 'male');
+            const females = remainingPlayers.filter(p => p.gender === 'female');
             
-            let poolPlayers = [...pool];
+            // Create matches from each gender pool
+            matches.push(...this.createMatchesFromPool(males, skillBalance));
+            matches.push(...this.createMatchesFromPool(females, skillBalance));
             
-            // Create matches from this pool
-            while (poolPlayers.length >= 2 && courtNumber <= courtsCount) {
-                let player1, player2;
-                
-                if (skillBalance === 'similar') {
-                    // Match players with similar skills - improved algorithm
-                    const matchPair = this.findBestSkillPair(poolPlayers);
-                    if (matchPair) {
-                        [player1, player2] = matchPair;
-                        poolPlayers = poolPlayers.filter(p => p.id !== player1.id && p.id !== player2.id);
-                    } else {
-                        // Fallback to random if no similar match found
-                        const shuffled = this.shuffleArray(poolPlayers);
-                        player1 = shuffled[0];
-                        player2 = shuffled[1];
-                        poolPlayers = poolPlayers.filter(p => p.id !== player1.id && p.id !== player2.id);
-                    }
-                } else {
-                    // Random skill - just randomly pair players
-                    const shuffled = this.shuffleArray(poolPlayers);
-                    player1 = shuffled[0];
-                    player2 = shuffled[1];
-                    poolPlayers = poolPlayers.filter(p => p.id !== player1.id && p.id !== player2.id);
-                }
-                
-                matches.push({
-                    court: courtNumber,
-                    team1: [player1],
-                    team2: [player2],
-                    type: 'singles'
+            // If we haven't filled all courts and have leftover players from different genders,
+            // loosen the rules and create mixed matches to utilize courts
+            if (matches.length < courtsCount) {
+                const usedPlayerIds = new Set();
+                matches.forEach(match => {
+                    usedPlayerIds.add(match.team1[0].id);
+                    usedPlayerIds.add(match.team2[0].id);
                 });
                 
-                courtNumber++;
+                const unusedPlayers = remainingPlayers.filter(p => !usedPlayerIds.has(p.id));
+                
+                // Create additional matches from unused players (loosening gender rules)
+                const additionalMatches = this.createMatchesFromPool(unusedPlayers, skillBalance);
+                matches.push(...additionalMatches);
             }
+        } else {
+            // 'any' gender - create matches from all players
+            matches.push(...this.createMatchesFromPool(remainingPlayers, skillBalance));
         }
         
-        // Randomize court assignments for fairness
-        const shuffledMatches = this.shuffleArray(matches);
+        // Limit to available courts and randomize court assignments
+        const finalMatches = matches.slice(0, courtsCount);
+        const shuffledMatches = this.shuffleArray(finalMatches);
         shuffledMatches.forEach((match, index) => {
             match.court = index + 1;
         });
         
         return shuffledMatches;
+    }
+
+    createMatchesFromPool(poolPlayers, skillBalance) {
+        const matches = [];
+        let players = [...poolPlayers];
+        
+        // Create matches from this pool
+        while (players.length >= 2) {
+            let player1, player2;
+            
+            if (skillBalance === 'similar') {
+                // Match players with similar skills
+                const matchPair = this.findBestSkillPair(players);
+                if (matchPair) {
+                    [player1, player2] = matchPair;
+                } else {
+                    // Fallback to random if no similar match found
+                    const shuffled = this.shuffleArray(players);
+                    player1 = shuffled[0];
+                    player2 = shuffled[1];
+                }
+            } else {
+                // Random skill - just randomly pair players
+                const shuffled = this.shuffleArray(players);
+                player1 = shuffled[0];
+                player2 = shuffled[1];
+            }
+            
+            matches.push({
+                team1: [player1],
+                team2: [player2],
+                type: 'singles'
+            });
+            
+            // Remove both players from the pool
+            players = players.filter(p => p.id !== player1.id && p.id !== player2.id);
+        }
+        
+        return matches;
     }
 
     findBestSkillPair(players) {
