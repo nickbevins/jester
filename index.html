@@ -171,6 +171,38 @@
                                     </label>
                                 </div>
                             </div>
+
+                            <div class="form-group">
+                                <label>Alert Sound:</label>
+                                <select id="alert-sound" class="alert-select">
+                                    <option value="beep">Double Beep</option>
+                                    <option value="chime">Chime</option>
+                                    <option value="bell">Bell</option>
+                                    <option value="buzzer">Buzzer</option>
+                                    <option value="none">Silent</option>
+                                </select>
+                                <button type="button" id="test-sound-btn" class="test-btn">Test</button>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Volume:</label>
+                                <div class="volume-control">
+                                    <input type="range" id="alert-volume" min="0" max="100" value="30" class="volume-slider">
+                                    <span id="volume-display">30%</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Vibration:</label>
+                                <select id="vibration-pattern" class="alert-select">
+                                    <option value="pulse">Pulse (Default)</option>
+                                    <option value="short">Short</option>
+                                    <option value="long">Long</option>
+                                    <option value="double">Double Tap</option>
+                                    <option value="none">Off</option>
+                                </select>
+                                <button type="button" id="test-vibration-btn" class="test-btn">Test</button>
+                            </div>
                             
                             <div class="timer-controls">
                                 <button id="start-timer-btn" class="timer-btn start-btn">Start Timer</button>
