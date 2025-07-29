@@ -21,7 +21,6 @@
         <nav class="nav">
             <button class="nav-btn active" data-tab="players">Players</button>
             <button class="nav-btn" data-tab="matches">Matches</button>
-            <button class="nav-btn" data-tab="timer">Timer</button>
         </nav>
 
         <main class="main">
@@ -136,83 +135,7 @@
                 </div>
             </div>
 
-            <!-- Timer Tab -->
-            <div id="timer-tab" class="tab-content">
-                <div class="section">
-                    <h2>Match Timer</h2>
-                    <div class="timer-container">
-                        <div class="timer-display">
-                            <div class="time-remaining" id="time-display">00:00</div>
-                            <div class="timer-label" id="timer-label">Ready</div>
-                        </div>
-                        
-                        <div class="timer-form">
-                            <div class="form-group">
-                                <label>Duration (minutes):</label>
-                                <div class="timer-presets">
-                                    <button class="preset-btn" data-minutes="15">15 min</button>
-                                    <button class="preset-btn" data-minutes="18">18 min</button>
-                                    <button class="preset-btn" data-minutes="20">20 min</button>
-                                    <button class="preset-btn" data-minutes="30">30 min</button>
-                                </div>
-                                <input type="number" id="custom-minutes" min="1" max="180" placeholder="Custom minutes">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Early Alerts:</label>
-                                <div class="alert-options">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="alert-2min" checked>
-                                        <span>2 minutes before end</span>
-                                    </label>
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="alert-1min" checked>
-                                        <span>1 minute before end</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Alert Sound:</label>
-                                <select id="alert-sound" class="alert-select">
-                                    <option value="beep">Double Beep</option>
-                                    <option value="chime">Chime</option>
-                                    <option value="bell">Bell</option>
-                                    <option value="buzzer">Buzzer</option>
-                                    <option value="none">Silent</option>
-                                </select>
-                                <button type="button" id="test-sound-btn" class="test-btn">Test</button>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Volume:</label>
-                                <div class="volume-control">
-                                    <input type="range" id="alert-volume" min="0" max="100" value="30" class="volume-slider">
-                                    <span id="volume-display">30%</span>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Vibration:</label>
-                                <select id="vibration-pattern" class="alert-select">
-                                    <option value="pulse">Pulse (Default)</option>
-                                    <option value="short">Short</option>
-                                    <option value="long">Long</option>
-                                    <option value="double">Double Tap</option>
-                                    <option value="none">Off</option>
-                                </select>
-                                <button type="button" id="test-vibration-btn" class="test-btn">Test</button>
-                            </div>
-                            
-                            <div class="timer-controls">
-                                <button id="start-timer-btn" class="timer-btn start-btn">Start Timer</button>
-                                <button id="pause-timer-btn" class="timer-btn pause-btn" disabled>Pause</button>
-                                <button id="stop-timer-btn" class="timer-btn stop-btn" disabled>Stop</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Timer Tab - REMOVED (code preserved for future use) -->
         </main>
     </div>
 
