@@ -8,6 +8,7 @@ class Jester {
         this.players = this.loadPlayers();
         this.editMode = false;
         this.fixedTeams = this.loadFixedTeams();
+        /* TIMER FUNCTIONALITY DISABLED - PRESERVED FOR FUTURE USE
         this.timer = {
             duration: 0,
             remaining: 0,
@@ -19,6 +20,7 @@ class Jester {
                 oneMin: false
             }
         };
+        */
         this.init();
     }
 
@@ -71,6 +73,7 @@ class Jester {
         document.getElementById('import-csv-btn').addEventListener('click', () => this.triggerImportCSV());
         document.getElementById('import-csv-input').addEventListener('change', (e) => this.importFromCSV(e));
         
+        /* TIMER CONTROLS DISABLED - PRESERVED FOR FUTURE USE
         // Timer controls
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.setTimerPreset(parseInt(e.target.dataset.minutes)));
@@ -83,6 +86,7 @@ class Jester {
         document.getElementById('alert-volume').addEventListener('input', (e) => this.updateVolumeDisplay(e.target.value));
         document.getElementById('test-sound-btn').addEventListener('click', () => this.testSound());
         document.getElementById('test-vibration-btn').addEventListener('click', () => this.testVibration());
+        */
     }
 
     selectOption(button) {
@@ -1698,6 +1702,7 @@ class Jester {
         localStorage.setItem('tennis-players', JSON.stringify(this.players));
     }
 
+    /* TIMER FUNCTIONALITY DISABLED - PRESERVED FOR FUTURE USE
     // Timer functionality
     async requestNotificationPermission() {
         if ('Notification' in window && Notification.permission === 'default') {
@@ -2005,6 +2010,7 @@ class Jester {
                 return [300, 100, 300, 100, 300];
         }
     }
+    */
 }
 
 // Register service worker for PWA functionality
