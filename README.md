@@ -8,12 +8,14 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 - **Singles & Doubles Modes**: Choose between 1v1 singles or 2v2 doubles matches
 - **Match Timer**: *(Temporarily disabled - being improved for better background functionality and haptics)*
 - **Smart Match Generation**: Create balanced matches with customizable preferences
+- **Bench Weighting System**: Fair rotation ensuring recently benched players get priority
 - **Multiple Match Types**: Supports doubles, singles, and Canadian doubles (2v1)
 - **Flexible Options**: 
   - Match mode (singles or doubles)
   - Gender preferences (mixed, same-gender, or any)
   - Skill balancing (random, individual similarity, or team balance)
   - Fixed teammate pairs (doubles mode only)
+  - Bench weighting for fair rotation (configurable)
 - **CSV Import/Export**: Share and backup your player rosters
 - **Mobile Optimized**: Responsive design with dark theme  
 - **PWA Features**: Installable app with offline support
@@ -57,6 +59,12 @@ A Progressive Web App for generating balanced tennis matches (singles and double
   - Team option is disabled (not applicable to singles)
 
 ### Advanced Features
+- **Bench Weighting**: Configurable fair rotation system in Advanced Settings
+  - Automatically tracks players who sit out or play Canadian doubles/singles
+  - Prioritizes recently benched players for future matches
+  - Uses exponential weighting (recent rounds weighted more heavily)
+  - Resets after 2 hours of inactivity
+  - Can be disabled for pure random selection
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
 - **Bulk Operations**: Select/clear all players quickly
 - **CSV Export/Import**: Share rosters between devices or backup data
@@ -148,13 +156,44 @@ The app uses sophisticated algorithms to create balanced matches in both singles
 - **2 Players**: Singles match
 - **1 Player**: Sits out
 
+## Bench Weighting Algorithm
+
+The bench weighting system ensures fair rotation by tracking and prioritizing players who have recently been benched (sitting out or playing non-regular matches).
+
+### How It Works
+1. **Tracking**: Monitors players who:
+   - Sit out completely
+   - Play Canadian doubles (2v1) 
+   - Play singles when others play doubles
+2. **Weighting**: Recent bench rounds weighted exponentially higher using `Math.pow(2, rounds)`
+3. **Selection**: When choosing players for matches, those with higher bench scores get priority
+4. **History Management**: 
+   - Tracks last `courts - 1` rounds of bench history
+   - Auto-resets after 2 hours of inactivity
+   - Persists across browser sessions
+
+### Configuration
+- **Default**: Enabled for fair play
+- **Toggle**: Can be disabled in Advanced Settings
+- **Fallback**: When disabled, uses pure random Fisher-Yates shuffle
+- **Persistent**: Setting saved in browser localStorage
+
+### Example
+With 3 courts, tracking last 2 rounds:
+- Alice benched 2 rounds ago: weight = 2¹ = 2
+- Bob benched 1 round ago: weight = 2² = 4  
+- Charlie never benched: weight = 0
+- **Priority order**: Bob (4) → Alice (2) → Charlie (0)
+
 ## Key Algorithm Features
-- **True Randomization**: Fisher-Yates shuffle algorithm
+- **Bench Weighting System**: Fair rotation with exponential weighting for recent bench history
+- **True Randomization**: Fisher-Yates shuffle algorithm (when bench weighting disabled)
 - **Optimal Skill Matching**: Sophisticated pairing logic for individual skill preferences
 - **Fixed Team Distribution**: Prevents clustering on early courts (doubles only)
 - **Fallback Logic**: Graceful handling when preferred gender combinations aren't possible
 - **Smart Court Usage**: Maximizes player participation within court constraints
 - **Gender Balance**: Intelligent distribution when using "same gender" filtering
+- **Configurable Fairness**: Toggle between weighted selection and pure randomization
 
 ## Contributing
 
