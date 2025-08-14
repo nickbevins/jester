@@ -118,10 +118,21 @@
                         </div>
                         
                         <div id="advanced-panel" class="advanced-panel" style="display: none;">
-                            <h3>Fixed Teammates</h3>
-                            <p class="advanced-help">Select players to always play together as teammates</p>
-                            <div id="fixed-teams-list" class="fixed-teams-list"></div>
-                            <button id="add-fixed-team-btn" type="button">Add Fixed Team</button>
+                            <div class="advanced-section">
+                                <h3>Bench Weighting</h3>
+                                <p class="advanced-help">Prioritize players who sat out recently when selecting who plays</p>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="bench-weighting-enabled" checked>
+                                    Enable bench weighting for fair rotation
+                                </label>
+                            </div>
+                            
+                            <div class="advanced-section">
+                                <h3>Fixed Teammates</h3>
+                                <p class="advanced-help">Select players to always play together as teammates</p>
+                                <div id="fixed-teams-list" class="fixed-teams-list"></div>
+                                <button id="add-fixed-team-btn" type="button">Add Fixed Team</button>
+                            </div>
                         </div>
 
                         <button id="generate-matches-btn">Generate Matches</button>

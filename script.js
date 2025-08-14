@@ -8,6 +8,8 @@ class Jester {
         this.players = this.loadPlayers();
         this.editMode = false;
         this.fixedTeams = this.loadFixedTeams();
+        this.benchHistory = this.loadBenchHistory();
+        this.benchWeightingEnabled = this.loadBenchWeightingSetting();
         /* TIMER FUNCTIONALITY DISABLED - PRESERVED FOR FUTURE USE
         this.timer = {
             duration: 0,
@@ -67,6 +69,7 @@ class Jester {
         // Advanced settings
         document.getElementById('advanced-toggle-btn').addEventListener('click', () => this.toggleAdvancedPanel());
         document.getElementById('add-fixed-team-btn').addEventListener('click', () => this.addFixedTeam());
+        document.getElementById('bench-weighting-enabled').addEventListener('change', (e) => this.updateBenchWeightingSetting(e.target.checked));
         
         // Import/Export
         document.getElementById('export-csv-btn').addEventListener('click', () => this.exportToCSV());
@@ -301,6 +304,7 @@ class Jester {
         
         if (!isVisible) {
             this.renderFixedTeams();
+            this.updateBenchWeightingUI();
         }
     }
 
@@ -380,6 +384,62 @@ class Jester {
     loadFixedTeams() {
         const saved = localStorage.getItem('tennis-fixed-teams');
         return saved ? JSON.parse(saved) : [];
+    }
+
+    loadBenchHistory() {
+        const saved = localStorage.getItem('tennis-bench-history');
+        if (!saved) return { lastMatchTime: null, history: [] };
+        
+        const data = JSON.parse(saved);
+        const now = Date.now();
+        const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        
+        // Reset if more than 2 hours since last match
+        if (!data.lastMatchTime || (now - data.lastMatchTime) > twoHours) {
+            return { lastMatchTime: null, history: [] };
+        }
+        
+        return data;
+    }
+
+    saveBenchHistory() {
+        localStorage.setItem('tennis-bench-history', JSON.stringify(this.benchHistory));
+    }
+
+    getBenchScore(playerName, courtsCount) {
+        if (!this.benchHistory.history.length) return 0;
+        
+        const maxHistoryRounds = 10; // Track last 10 rounds for better fairness
+        let score = 0;
+        
+        // Check recent rounds (newest first)
+        for (let i = 0; i < Math.min(this.benchHistory.history.length, maxHistoryRounds); i++) {
+            const round = this.benchHistory.history[i];
+            if (round.includes(playerName)) {
+                // Linear weighting: recent rounds get higher scores
+                score += maxHistoryRounds - i;
+            }
+        }
+        
+        return score;
+    }
+
+    updateBenchHistory(benchedPlayers, courtsCount) {
+        const maxHistoryRounds = 10; // Track last 10 rounds for better fairness
+        
+        // Add current round to front of history
+        this.benchHistory.history.unshift(benchedPlayers);
+        
+        // Keep only the recent rounds we care about
+        if (this.benchHistory.history.length > maxHistoryRounds) {
+            this.benchHistory.history = this.benchHistory.history.slice(0, maxHistoryRounds);
+        }
+        
+        // Update timestamp
+        this.benchHistory.lastMatchTime = Date.now();
+        
+        // Save to localStorage
+        this.saveBenchHistory();
     }
 
     saveFixedTeams() {
@@ -629,6 +689,7 @@ class Jester {
                 return;
             }
             const result = this.createSinglesMatches(activePlayers, courtsCount, genderFilter, skillBalance);
+            this.updateBenchHistory(result.sittingPlayers.map(p => p.name), courtsCount);
             this.renderMatches(result.matches, result.sittingPlayers);
         } else {
             if (activePlayers.length < 4) {
@@ -651,6 +712,27 @@ class Jester {
             }
 
             const result = this.createMatches(activePlayers, actualCourts, genderFilter, skillBalance);
+            
+            // For doubles, track players who didn't get regular doubles matches
+            const benchedPlayers = [];
+            const allPlayingPlayers = new Set();
+            
+            result.matches.forEach(match => {
+                if (match.type === 'doubles') {
+                    // Regular doubles players don't get benched
+                    match.team1.forEach(p => allPlayingPlayers.add(p.name));
+                    match.team2.forEach(p => allPlayingPlayers.add(p.name));
+                } else {
+                    // Canadian doubles and singles players get benched priority
+                    match.team1.forEach(p => benchedPlayers.push(p.name));
+                    match.team2.forEach(p => benchedPlayers.push(p.name));
+                }
+            });
+            
+            // Add sitting players to benched list
+            result.sittingPlayers.forEach(p => benchedPlayers.push(p.name));
+            
+            this.updateBenchHistory(benchedPlayers, actualCourts);
             this.renderMatches(result.matches, result.sittingPlayers);
         }
     }
@@ -667,7 +749,7 @@ class Jester {
             } else {
                 // Need special court for leftover players
                 const doublesPlayerCount = Math.floor(players.length / 4) * 4;
-                const doublesPlayers = this.randomSelectPlayers(players, doublesPlayerCount);
+                const doublesPlayers = this.randomSelectPlayers(players, doublesPlayerCount, courtsCount);
                 const specialPlayers = players.filter(p => !doublesPlayers.some(dp => dp.id === p.id));
                 
                 // Create doubles matches
@@ -682,7 +764,7 @@ class Jester {
             }
         } else {
             // Not enough court capacity - randomly select players
-            const selectedPlayers = this.randomSelectPlayers(players, courtsCount * 4);
+            const selectedPlayers = this.randomSelectPlayers(players, courtsCount * 4, courtsCount);
             sittingPlayers = players.filter(p => !selectedPlayers.some(sp => sp.id === p.id));
             matches.push(...this.createAllDoublesMatches(selectedPlayers, courtsCount, genderFilter, skillBalance));
         }
@@ -703,15 +785,35 @@ class Jester {
                 const playingPlayers = [...players];
                 matches.push(...this.createSinglesMatchesFromPlayers(playingPlayers, courtsCount, genderFilter, skillBalance));
             } else {
-                // Odd number of players - randomly exclude one to sit
-                const shuffled = this.shuffleArray([...players]);
-                sittingPlayers.push(shuffled.pop());
-                const playingPlayers = shuffled;
-                matches.push(...this.createSinglesMatchesFromPlayers(playingPlayers, courtsCount, genderFilter, skillBalance));
+                // Odd number of players - prioritize recently benched players for play if weighting enabled
+                if (this.benchWeightingEnabled) {
+                    const weightedPlayers = players.map(player => ({
+                        player,
+                        weight: this.getBenchScore(player.name, courtsCount)
+                    }));
+                    
+                    // Sort by bench score (highest priority to play)
+                    weightedPlayers.sort((a, b) => b.weight - a.weight);
+                    
+                    // Player with lowest bench score sits out
+                    sittingPlayers.push(weightedPlayers[weightedPlayers.length - 1].player);
+                    const playingPlayers = weightedPlayers.slice(0, -1).map(wp => wp.player);
+                    matches.push(...this.createSinglesMatchesFromPlayers(playingPlayers, courtsCount, genderFilter, skillBalance));
+                } else {
+                    // Random selection when weighting disabled
+                    const shuffled = [...players];
+                    for (let i = shuffled.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                    }
+                    sittingPlayers.push(shuffled[shuffled.length - 1]);
+                    const playingPlayers = shuffled.slice(0, -1);
+                    matches.push(...this.createSinglesMatchesFromPlayers(playingPlayers, courtsCount, genderFilter, skillBalance));
+                }
             }
         } else {
-            // Not enough court capacity - randomly select players
-            const selectedPlayers = this.randomSelectPlayers(players, maxPlayersNeeded);
+            // Not enough court capacity - select players with bench weighting
+            const selectedPlayers = this.randomSelectPlayers(players, maxPlayersNeeded, courtsCount);
             sittingPlayers = players.filter(p => !selectedPlayers.some(sp => sp.id === p.id));
             matches.push(...this.createSinglesMatchesFromPlayers(selectedPlayers, courtsCount, genderFilter, skillBalance));
         }
@@ -1038,18 +1140,52 @@ class Jester {
         return shuffled.slice(0, maxPlayers);
     }
 
-    randomSelectPlayers(players, count) {
+    randomSelectPlayers(players, count, courtsCount) {
         if (players.length <= count) {
             return [...players];
         }
         
-        // Random selection using Fisher-Yates shuffle
+        // Use bench weighting if enabled and courtsCount is provided
+        if (this.benchWeightingEnabled && courtsCount) {
+            return this.weightedSelectPlayers(players, count, courtsCount);
+        }
+        
+        // Fallback to random selection using Fisher-Yates shuffle
         const shuffled = [...players];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
         return shuffled.slice(0, count);
+    }
+
+    weightedSelectPlayers(players, count, courtsCount) {
+        // Create weighted array with bench scores
+        const weightedPlayers = players.map(player => ({
+            player,
+            weight: this.getBenchScore(player.name, courtsCount) + 1 // +1 base weight for everyone
+        }));
+        
+        // Sort by weight (highest bench scores first)
+        weightedPlayers.sort((a, b) => b.weight - a.weight);
+        
+        // Add some randomness while still favoring recently benched players
+        const selected = [];
+        const playerPool = [...weightedPlayers];
+        
+        while (selected.length < count && playerPool.length > 0) {
+            // Select from players with the highest bench score (strict priority)
+            const topWeights = playerPool.filter(p => p.weight === playerPool[0].weight);
+            const randomIndex = Math.floor(Math.random() * topWeights.length);
+            
+            selected.push(topWeights[randomIndex].player);
+            // Remove the selected player from the pool
+            const selectedPlayer = topWeights[randomIndex];
+            const poolIndex = playerPool.findIndex(p => p.player.id === selectedPlayer.player.id);
+            playerPool.splice(poolIndex, 1);
+        }
+        
+        return selected;
     }
 
     createRandomTeam(availablePlayers, skillBalance) {
@@ -1700,6 +1836,24 @@ class Jester {
 
     savePlayers() {
         localStorage.setItem('tennis-players', JSON.stringify(this.players));
+    }
+
+    loadBenchWeightingSetting() {
+        const saved = localStorage.getItem('tennis-bench-weighting');
+        return saved ? JSON.parse(saved) : true; // Default to enabled
+    }
+
+    saveBenchWeightingSetting() {
+        localStorage.setItem('tennis-bench-weighting', JSON.stringify(this.benchWeightingEnabled));
+    }
+
+    updateBenchWeightingSetting(enabled) {
+        this.benchWeightingEnabled = enabled;
+        this.saveBenchWeightingSetting();
+    }
+
+    updateBenchWeightingUI() {
+        document.getElementById('bench-weighting-enabled').checked = this.benchWeightingEnabled;
     }
 
     /* TIMER FUNCTIONALITY DISABLED - PRESERVED FOR FUTURE USE
