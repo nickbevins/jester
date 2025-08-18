@@ -59,26 +59,28 @@ jester/
 
 ### Core Functionality
 - **Bench History Tracking**: Maintains rolling history of players who didn't get regular doubles matches
-- **Exponential Weighting**: Recent bench rounds weighted more heavily using `Math.pow(2, rounds)`
+- **Exponential Weighting**: Recent bench rounds weighted more heavily using `Math.pow(1.5, rounds)` with random jitter
 - **Time-based Reset**: History clears after 2 hours of inactivity to prevent stale data
 - **Court-aware Logic**: History length adapts to court count (`courtsCount - 1` rounds)
 
 ### Implementation Details
 ```javascript
-// Bench score calculation with exponential weighting
+// Bench score calculation with exponential weighting plus jitter
 getBenchScore(playerName, courtsCount) {
     for (let i = 0; i < maxHistoryRounds; i++) {
         if (round.includes(playerName)) {
-            score += Math.pow(2, maxHistoryRounds - i); // Recent rounds weighted higher
+            const baseWeight = Math.pow(1.5, maxHistoryRounds - i);
+            const jitter = Math.random() * 0.3; // Small random component
+            score += baseWeight + jitter;
         }
     }
 }
 ```
 
 ### Player Selection Logic
-- **Weighted Selection**: Players with higher bench scores get priority
-- **Strict Priority**: Only selects from highest-weighted players, no random override
-- **Equal Weight Randomization**: Random selection only among players with same highest score
+- **Weighted Random Selection**: Players with higher bench scores have proportionally better odds of selection
+- **Probability-based**: Uses cumulative weight distribution for fair randomized selection
+- **Natural Variation**: Prevents predictable rotation patterns while maintaining fairness
 - **Configurable**: Can be disabled in Advanced Settings for pure random selection
 
 ### Advanced Settings Integration
@@ -149,7 +151,8 @@ findBestSkillPair(players) {
 3. **Added Timer Page**: Full-featured countdown with customizable alerts
 4. **Enhanced Skill Matching**: Added variety while maintaining skill consciousness
 5. **Implemented Bench Weighting**: Fair rotation system with configurable priority
-6. **Mobile Optimization**: Touch-friendly controls, responsive design
+6. **Improved Bench Weighting**: Added weighted random selection with exponential decay and jitter to prevent predictable patterns
+7. **Mobile Optimization**: Touch-friendly controls, responsive design
 
 ### Code Quality Improvements
 - **Modular Functions**: Separated matching logic into reusable components
