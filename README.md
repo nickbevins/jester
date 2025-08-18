@@ -165,8 +165,8 @@ The bench weighting system ensures fair rotation by tracking and prioritizing pl
    - Sit out completely
    - Play Canadian doubles (2v1) 
    - Play singles when others play doubles
-2. **Weighting**: Recent bench rounds weighted exponentially higher using `Math.pow(2, rounds)`
-3. **Selection**: When choosing players for matches, those with higher bench scores get priority
+2. **Weighting**: Recent bench rounds weighted exponentially using `Math.pow(1.5, rounds)` with random jitter to prevent predictable patterns
+3. **Selection**: Uses weighted random selection where players with higher bench scores have proportionally better odds (not strict priority)
 4. **History Management**: 
    - Tracks last `courts - 1` rounds of bench history
    - Auto-resets after 2 hours of inactivity
@@ -180,13 +180,13 @@ The bench weighting system ensures fair rotation by tracking and prioritizing pl
 
 ### Example
 With 3 courts, tracking last 2 rounds:
-- Alice benched 2 rounds ago: weight = 2¹ = 2
-- Bob benched 1 round ago: weight = 2² = 4  
-- Charlie never benched: weight = 0
-- **Priority order**: Bob (4) → Alice (2) → Charlie (0)
+- Alice benched 2 rounds ago: weight = 1.5¹ + jitter = ~1.8
+- Bob benched 1 round ago: weight = 1.5² + jitter = ~2.5
+- Charlie never benched: weight = 1.0 (base weight)
+- **Selection odds**: Bob has ~2.5x better odds than Charlie, Alice has ~1.8x better odds
 
 ## Key Algorithm Features
-- **Bench Weighting System**: Fair rotation with exponential weighting for recent bench history
+- **Bench Weighting System**: Fair rotation with exponential weighting plus randomization to prevent predictable patterns
 - **True Randomization**: Fisher-Yates shuffle algorithm (when bench weighting disabled)
 - **Optimal Skill Matching**: Sophisticated pairing logic for individual skill preferences
 - **Fixed Team Distribution**: Prevents clustering on early courts (doubles only)
