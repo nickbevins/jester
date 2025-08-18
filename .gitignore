@@ -1,6 +1,5 @@
 # Claude Code internal files
 .claude/
-CLAUDE.md
 
 # User data files
 *.csv
