@@ -1,0 +1,14 @@
+# Claude Code internal files
+.claude/
+CLAUDE.md
+
+# User data files
+*.csv
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/

@@ -416,8 +416,10 @@ class Jester {
         for (let i = 0; i < Math.min(this.benchHistory.history.length, maxHistoryRounds); i++) {
             const round = this.benchHistory.history[i];
             if (round.includes(playerName)) {
-                // Linear weighting: recent rounds get higher scores
-                score += maxHistoryRounds - i;
+                // Exponential weighting with slight jitter to break ties
+                const baseWeight = Math.pow(1.5, maxHistoryRounds - i);
+                const jitter = Math.random() * 0.3; // Small random component
+                score += baseWeight + jitter;
             }
         }
         
@@ -1166,23 +1168,27 @@ class Jester {
             weight: this.getBenchScore(player.name, courtsCount) + 1 // +1 base weight for everyone
         }));
         
-        // Sort by weight (highest bench scores first)
-        weightedPlayers.sort((a, b) => b.weight - a.weight);
-        
-        // Add some randomness while still favoring recently benched players
+        // Use weighted random selection instead of strict priority
         const selected = [];
         const playerPool = [...weightedPlayers];
         
         while (selected.length < count && playerPool.length > 0) {
-            // Select from players with the highest bench score (strict priority)
-            const topWeights = playerPool.filter(p => p.weight === playerPool[0].weight);
-            const randomIndex = Math.floor(Math.random() * topWeights.length);
+            // Calculate total weight for probability distribution
+            const totalWeight = playerPool.reduce((sum, p) => sum + p.weight, 0);
             
-            selected.push(topWeights[randomIndex].player);
-            // Remove the selected player from the pool
-            const selectedPlayer = topWeights[randomIndex];
-            const poolIndex = playerPool.findIndex(p => p.player.id === selectedPlayer.player.id);
-            playerPool.splice(poolIndex, 1);
+            // Generate random number for weighted selection
+            const randomValue = Math.random() * totalWeight;
+            let cumulativeWeight = 0;
+            
+            // Find the selected player using cumulative weights
+            for (let i = 0; i < playerPool.length; i++) {
+                cumulativeWeight += playerPool[i].weight;
+                if (randomValue <= cumulativeWeight) {
+                    selected.push(playerPool[i].player);
+                    playerPool.splice(i, 1); // Remove selected player
+                    break;
+                }
+            }
         }
         
         return selected;
