@@ -1045,8 +1045,8 @@ class Jester {
     pairTeamsIntoMatches(teams, skillBalance) {
         const matches = [];
         
-        if (skillBalance === 'balanced') {
-            // For balanced skill, pair teams with similar total skill
+        if (skillBalance === 'balanced' || skillBalance === 'similar') {
+            // For both balanced and individual (similar) skill, pair teams with similar total skill
             const teamsWithSkill = teams.map(team => ({
                 team: team,
                 totalSkill: team.reduce((sum, player) => sum + player.skill, 0)
@@ -1055,15 +1055,18 @@ class Jester {
             // Sort by skill
             teamsWithSkill.sort((a, b) => a.totalSkill - b.totalSkill);
             
-            // Pair adjacent teams (similar skill levels)
-            for (let i = 0; i < teamsWithSkill.length - 1; i += 2) {
+            // Add flexibility to prevent repetitive matches by introducing controlled randomness
+            const flexiblePairs = this.createFlexibleSkillPairs(teamsWithSkill);
+            
+            // Create matches from flexible pairs
+            flexiblePairs.forEach((pair, index) => {
                 matches.push({
-                    court: matches.length + 1,
-                    team1: teamsWithSkill[i].team,
-                    team2: teamsWithSkill[i + 1].team,
+                    court: index + 1,
+                    team1: pair.team1,
+                    team2: pair.team2,
                     type: 'doubles'
                 });
-            }
+            });
         } else {
             // For random, shuffle teams first then pair sequentially
             const shuffledTeams = [...teams];
@@ -1084,6 +1087,66 @@ class Jester {
         }
         
         return matches;
+    }
+
+    createFlexibleSkillPairs(teamsWithSkill) {
+        const pairs = [];
+        const used = new Set();
+        
+        for (let i = 0; i < teamsWithSkill.length; i++) {
+            if (used.has(i)) continue;
+            
+            const currentTeam = teamsWithSkill[i];
+            let bestMatch = null;
+            let bestMatchIndex = -1;
+            let smallestDiff = Infinity;
+            
+            // Find potential matches within reasonable skill range
+            const candidates = [];
+            for (let j = i + 1; j < teamsWithSkill.length; j++) {
+                if (used.has(j)) continue;
+                
+                const skillDiff = Math.abs(currentTeam.totalSkill - teamsWithSkill[j].totalSkill);
+                
+                // Accept matches within 2.0 skill points for flexibility
+                if (skillDiff <= 2.0) {
+                    candidates.push({ index: j, team: teamsWithSkill[j], skillDiff });
+                }
+                
+                // Track the absolute best match as fallback
+                if (skillDiff < smallestDiff) {
+                    smallestDiff = skillDiff;
+                    bestMatch = teamsWithSkill[j];
+                    bestMatchIndex = j;
+                }
+            }
+            
+            let selectedMatch, selectedIndex;
+            
+            if (candidates.length > 0) {
+                // Randomly select from good candidates for variety
+                const randomCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+                selectedMatch = randomCandidate.team;
+                selectedIndex = randomCandidate.index;
+            } else if (bestMatch) {
+                // Fallback to best available match
+                selectedMatch = bestMatch;
+                selectedIndex = bestMatchIndex;
+            } else {
+                // No valid matches remaining, skip this team
+                continue;
+            }
+            
+            pairs.push({
+                team1: currentTeam.team,
+                team2: selectedMatch.team
+            });
+            
+            used.add(i);
+            used.add(selectedIndex);
+        }
+        
+        return pairs;
     }
 
     randomizeCourtAssignments(matches) {
