@@ -15,13 +15,13 @@
 <body>
     <div class="app">
         <header class="header">
-            <h1>🎾 Jester</h1>
+            <span class="app-title">Jester</span>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="players">Players</button>
+                <button class="nav-btn" data-tab="matches">Matches</button>
+                <button class="nav-btn" data-tab="timer">Timer</button>
+            </nav>
         </header>
-
-        <nav class="nav">
-            <button class="nav-btn active" data-tab="players">Players</button>
-            <button class="nav-btn" data-tab="matches">Matches</button>
-        </nav>
 
         <main class="main">
             <!-- Players Tab -->
@@ -91,6 +91,7 @@
                                 <button type="button" class="court-btn" data-court="3">3</button>
                                 <button type="button" class="court-btn" data-court="4">4</button>
                                 <button type="button" class="court-btn" data-court="5">5</button>
+                                <button type="button" class="court-btn" data-court="6">6</button>
                                 <input type="number" id="courts-count" min="1" max="10" placeholder="Other">
                             </div>
                         </div>
@@ -102,6 +103,7 @@
                                 <button class="option-btn" data-option="gender" data-value="mixed">Mixed</button>
                                 <button class="option-btn" data-option="gender" data-value="same">Same</button>
                             </div>
+                            <p id="gender-helper" class="option-helper"></p>
                         </div>
 
                         <div class="form-group">
@@ -111,6 +113,7 @@
                                 <button class="option-btn" data-option="skill" data-value="similar">Individual</button>
                                 <button class="option-btn" data-option="skill" data-value="balanced">Team</button>
                             </div>
+                            <p id="skill-helper" class="option-helper"></p>
                         </div>
 
                         <div class="advanced-toggle">
@@ -146,8 +149,87 @@
                 </div>
             </div>
 
-            <!-- Timer Tab - REMOVED (code preserved for future use) -->
+            <!-- Timer Tab -->
+            <div id="timer-tab" class="tab-content">
+                <div class="section">
+                    <div class="timer-display">
+                        <div id="time-display" class="time-display">00:00</div>
+                        <div id="timer-label" class="timer-label">Ready</div>
+                    </div>
+
+                    <div class="timer-presets">
+                        <button class="preset-btn" data-minutes="10">10m</button>
+                        <button class="preset-btn" data-minutes="15">15m</button>
+                        <button class="preset-btn" data-minutes="20">20m</button>
+                        <button class="preset-btn" data-minutes="25">25m</button>
+                        <button class="preset-btn" data-minutes="30">30m</button>
+                    </div>
+
+                    <input type="number" id="custom-minutes" class="timer-custom-input" min="1" max="120" placeholder="Or enter minutes">
+
+                    <div class="timer-controls">
+                        <button id="start-timer-btn" class="timer-btn start-btn">Start</button>
+                        <button id="pause-timer-btn" class="timer-btn pause-btn" disabled>Pause</button>
+                        <button id="stop-timer-btn" class="timer-btn stop-btn" disabled>Stop</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Alert Settings</h2>
+                    <div class="alert-settings">
+                        <div class="form-group">
+                            <label>Mid-match alerts:</label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="alert-2min" checked> Warn at 2 minutes remaining
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="alert-1min" checked> Warn at 1 minute remaining
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Sound:</label>
+                            <select id="alert-sound">
+                                <option value="beep">Beep</option>
+                                <option value="chime">Chime</option>
+                                <option value="bell">Bell</option>
+                                <option value="buzzer">Buzzer</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Volume: <span id="volume-display">80%</span></label>
+                            <input type="range" id="alert-volume" min="0" max="100" value="80">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Vibration:</label>
+                            <select id="vibration-pattern">
+                                <option value="pulse">Pulse</option>
+                                <option value="double">Double</option>
+                                <option value="short">Short</option>
+                                <option value="long">Long</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+
+                        <div class="timer-test-controls">
+                            <button id="test-sound-btn">Test Sound</button>
+                            <button id="test-vibration-btn">Test Vibration</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
+
+        <div id="alarm-modal" class="alarm-modal" style="display: none;">
+            <div class="alarm-modal-content">
+                <div class="alarm-modal-title">Time's Up!</div>
+                <div class="alarm-modal-body">Round complete</div>
+                <button id="alarm-dismiss-btn" class="alarm-dismiss-btn">Dismiss</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

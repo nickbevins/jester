@@ -6,7 +6,7 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 
 - **Player Management**: Add, edit, and manage your tennis player roster
 - **Singles & Doubles Modes**: Choose between 1v1 singles or 2v2 doubles matches
-- **Match Timer**: *(Temporarily disabled - being improved for better background functionality and haptics)*
+- **Match Timer**: Countdown timer with mid-match alerts, customizable sounds, and vibration
 - **Smart Match Generation**: Create balanced matches with customizable preferences
 - **Bench Weighting System**: Fair rotation ensuring recently benched players get priority
 - **Multiple Match Types**: Supports doubles, singles, and Canadian doubles (2v1)
@@ -46,7 +46,13 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 6. Click "Generate Matches"
 
 ### Using the Timer
-*(Timer functionality is temporarily disabled while being improved for better background functionality and haptics. The feature will be restored in a future update.)*
+1. Go to the **Timer** tab
+2. Select a preset duration (10–30m) or enter a custom number of minutes
+3. Tap **Start** — the screen wake lock activates to keep the display on and audio running
+4. Use **Pause** / **Resume** to hold the timer; **Stop** to cancel
+5. Configure alerts in the Alert Settings section below the controls
+   - Mid-match warnings (2min, 1min): sound plays 3 times, timer continues
+   - Time's up: looping alarm + fullscreen modal — tap **Dismiss** to stop
 
 #### Singles Mode Options
 - **Gender**:
@@ -68,15 +74,27 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
 - **Bulk Operations**: Select/clear all players quickly
 - **CSV Export/Import**: Share rosters between devices or backup data
-- **Background Timer**: *(Coming soon - being improved for better reliability)*
-- **Customizable Alerts**: *(Coming soon - being improved with enhanced haptics)*
+- **Timer Alerts**: Mid-match warnings at 2 and 1 minute remaining (sound plays 3 times); time's up triggers a looping alarm with a fullscreen modal requiring dismissal
+- **Alert Customization**: Choose from beep, chime, bell, or buzzer sounds with adjustable volume; choose vibration pattern (Android)
 
 ## Technical Details
 
 - **Technology**: Vanilla HTML5, CSS3, JavaScript (no dependencies)
 - **Storage**: Browser localStorage for offline data persistence
 - **PWA Features**: Service worker for offline functionality, installable
-- **Compatibility**: Works on iOS, Android, and desktop browsers
+
+### Platform Notes
+
+| Feature | iOS (Safari / any browser) | Android (Chrome) | Desktop |
+|---|---|---|---|
+| Match generation | ✅ | ✅ | ✅ |
+| Timer & audio alerts | ✅ | ✅ | ✅ |
+| Screen Wake Lock | ✅ iOS 16.4+ | ✅ | ✅ most browsers |
+| Vibration alerts | ❌ Not supported in iOS | ✅ | ❌ |
+| PWA install | ✅ via Safari Share → Add to Home Screen | ✅ via browser menu | ✅ most browsers |
+| Offline support | ✅ | ✅ | ✅ |
+
+**Note on timer audio**: iOS suspends JavaScript when the screen locks. The Screen Wake Lock keeps the display on while the timer is running, ensuring audio alerts fire on schedule. Pause or stop the timer if you want the screen to sleep.
 
 ## Installation as PWA
 
@@ -141,14 +159,13 @@ The app uses sophisticated algorithms to create balanced matches in both singles
    - **Mixed**: Creates male/female pairs when possible
    - **Same**: Creates all-male or all-female teams
    - **Any**: Any gender combination
-3. **Skill Balancing**:
-   - **Individual**: Groups players with similar individual skill levels
-   - **Random**: Completely random team selection
-   - **Team**: Used for match pairing (see below)
+3. **Skill Balancing** (team formation):
+   - **Individual**: Partners are selected to have similar individual skill levels
+   - **Random** and **Team**: Partners are selected randomly (same behavior at this stage)
 
 ### Match Pairing
-- **Random/Individual Skill**: Teams are randomly shuffled before pairing into matches
-- **Team Skill**: Teams are sorted by total team skill and paired with similar skill opponents
+- **Individual** and **Team**: Teams sorted by total skill, then each team is paired with an opponent within 2.0 total skill points (randomly chosen among eligible opponents for variety)
+- **Random**: Teams are randomly shuffled before pairing — skill is ignored entirely
 - **Court Assignment**: All matches get randomized court numbers (fixed teams don't cluster)
 
 ### Special Matches (Doubles Mode Only)
@@ -167,8 +184,8 @@ The bench weighting system ensures fair rotation by tracking and prioritizing pl
    - Play singles when others play doubles
 2. **Weighting**: Recent bench rounds weighted exponentially using `Math.pow(1.5, rounds)` with random jitter to prevent predictable patterns
 3. **Selection**: Uses weighted random selection where players with higher bench scores have proportionally better odds (not strict priority)
-4. **History Management**: 
-   - Tracks last `courts - 1` rounds of bench history
+4. **History Management**:
+   - Tracks last 10 rounds of bench history
    - Auto-resets after 2 hours of inactivity
    - Persists across browser sessions
 
@@ -179,7 +196,7 @@ The bench weighting system ensures fair rotation by tracking and prioritizing pl
 - **Persistent**: Setting saved in browser localStorage
 
 ### Example
-With 3 courts, tracking last 2 rounds:
+With bench history tracking last 10 rounds:
 - Alice benched 2 rounds ago: weight = 1.5¹ + jitter = ~1.8
 - Bob benched 1 round ago: weight = 1.5² + jitter = ~2.5
 - Charlie never benched: weight = 1.0 (base weight)

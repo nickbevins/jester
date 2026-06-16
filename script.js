@@ -10,7 +10,6 @@ class Jester {
         this.fixedTeams = this.loadFixedTeams();
         this.benchHistory = this.loadBenchHistory();
         this.benchWeightingEnabled = this.loadBenchWeightingSetting();
-        /* TIMER FUNCTIONALITY DISABLED - PRESERVED FOR FUTURE USE
         this.timer = {
             duration: 0,
             remaining: 0,
@@ -22,7 +21,8 @@ class Jester {
                 oneMin: false
             }
         };
-        */
+        this.wakeLock = null;
+        this.alarmIntervalId = null;
         this.init();
     }
 
@@ -30,6 +30,8 @@ class Jester {
         this.setupEventListeners();
         this.renderPlayers();
         this.initializeCourtSelection();
+        this.updateOptionHelperText('gender', 'any');
+        this.updateOptionHelperText('skill', 'random');
     }
 
     setupEventListeners() {
@@ -76,7 +78,6 @@ class Jester {
         document.getElementById('import-csv-btn').addEventListener('click', () => this.triggerImportCSV());
         document.getElementById('import-csv-input').addEventListener('change', (e) => this.importFromCSV(e));
         
-        /* TIMER CONTROLS DISABLED - PRESERVED FOR FUTURE USE
         // Timer controls
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.setTimerPreset(parseInt(e.target.dataset.minutes)));
@@ -84,30 +85,58 @@ class Jester {
         document.getElementById('start-timer-btn').addEventListener('click', () => this.startTimer());
         document.getElementById('pause-timer-btn').addEventListener('click', () => this.pauseTimer());
         document.getElementById('stop-timer-btn').addEventListener('click', () => this.stopTimer());
-        
+
         // Alert customization controls
         document.getElementById('alert-volume').addEventListener('input', (e) => this.updateVolumeDisplay(e.target.value));
         document.getElementById('test-sound-btn').addEventListener('click', () => this.testSound());
         document.getElementById('test-vibration-btn').addEventListener('click', () => this.testVibration());
-        */
+        document.getElementById('alarm-dismiss-btn').addEventListener('click', () => this.dismissAlarm());
+
+        // Re-acquire wake lock when returning to foreground while timer is running
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && this.timer.isRunning && !this.timer.isPaused) {
+                await this.acquireWakeLock();
+            }
+        });
     }
 
     selectOption(button) {
         const option = button.dataset.option;
         const value = button.dataset.value;
-        
+
         // Remove active from siblings
         button.parentNode.querySelectorAll('.option-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        
+
         // Add active to clicked button
         button.classList.add('active');
-        
+
         // Handle mode changes
         if (option === 'mode') {
             this.handleModeChange(value);
         }
+
+        if (option === 'gender' || option === 'skill') {
+            this.updateOptionHelperText(option, value);
+        }
+    }
+
+    updateOptionHelperText(option, value) {
+        const descriptions = {
+            gender: {
+                any:   'No restriction — random pairings',
+                mixed: 'Prefer mixed gender teams',
+                same:  'Prefer same gender teams',
+            },
+            skill: {
+                random:   'Teams and opponents are chosen at random',
+                similar:  'Partners have similar skill levels; opponent teams are matched by combined skill',
+                balanced: 'Partners are random; opponent teams are matched by combined skill',
+            },
+        };
+        const el = document.getElementById(`${option}-helper`);
+        if (el) el.textContent = descriptions[option][value] ?? '';
     }
 
     handleModeChange(mode) {
@@ -138,6 +167,7 @@ class Jester {
                         // Default to 'similar' for singles
                         const similarBtn = document.querySelector('.option-btn[data-option="skill"][data-value="similar"]');
                         if (similarBtn) similarBtn.classList.add('active');
+                        this.updateOptionHelperText('skill', 'similar');
                     }
                 }
             });
@@ -474,7 +504,7 @@ class Jester {
         link.setAttribute('href', url);
         const now = new Date();
         const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5); // YYYY-MM-DDTHH-MM-SS
-        link.setAttribute('download', `tennis-roster-${timestamp}.csv`);
+        link.setAttribute('download', `jester-roster-${timestamp}.csv`);
         link.style.visibility = 'hidden';
         
         document.body.appendChild(link);
@@ -601,6 +631,14 @@ class Jester {
     }
 
 
+    escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     renderPlayers() {
         const container = document.getElementById('players-list');
         
@@ -625,7 +663,7 @@ class Jester {
                            ${player.active ? 'checked' : ''} 
                            onchange="app.togglePlayerActive(${player.id})">
                     <div class="player-info">
-                        <input type="text" class="edit-name" value="${player.name}" 
+                        <input type="text" class="edit-name" value="${this.escapeHtml(player.name)}"
                                onchange="app.updatePlayer(${player.id}, 'name', this.value)">
                         <div class="player-edit-controls">
                             <select class="edit-gender" onchange="app.updatePlayer(${player.id}, 'gender', this.value)">
@@ -655,7 +693,7 @@ class Jester {
                            ${player.active ? 'checked' : ''} 
                            onchange="app.togglePlayerActive(${player.id})">
                     <div class="player-info">
-                        <div class="player-name">${player.name}</div>
+                        <div class="player-name">${this.escapeHtml(player.name)}</div>
                         <div class="player-details">
                             <span class="skill-badge">Skill: ${player.skill}</span>
                             <span class="gender-badge">${player.gender}</span>
@@ -1046,7 +1084,9 @@ class Jester {
         const matches = [];
         
         if (skillBalance === 'balanced' || skillBalance === 'similar') {
-            // For both balanced and individual (similar) skill, pair teams with similar total skill
+            // Pair teams so opponents have similar total skill.
+            // 'balanced': teams were formed randomly, pairing makes the match itself fair.
+            // 'similar': teams were formed with similar-skill partners, pairing also matches similar totals.
             const teamsWithSkill = teams.map(team => ({
                 team: team,
                 totalSkill: team.reduce((sum, player) => sum + player.skill, 0)
@@ -1190,21 +1230,6 @@ class Jester {
         return null;
     }
 
-    selectPlayingPlayers(players, maxPlayers, genderFilter, skillBalance) {
-        if (players.length <= maxPlayers) {
-            // Everyone can play
-            return [...players];
-        }
-        
-        // Always use random selection for fairness - skill preferences only apply to team formation
-        const shuffled = [...players];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled.slice(0, maxPlayers);
-    }
-
     randomSelectPlayers(players, count, courtsCount) {
         if (players.length <= count) {
             return [...players];
@@ -1290,324 +1315,6 @@ class Jester {
         return null;
     }
 
-    createBalancedMatches(teams) {
-        const matches = [];
-        const availableTeams = [...teams];
-        
-        // Calculate team totals and sort by skill
-        const teamsWithSkills = availableTeams.map(team => ({
-            team: team,
-            totalSkill: team.reduce((sum, player) => sum + player.skill, 0)
-        })).sort((a, b) => a.totalSkill - b.totalSkill);
-        
-        // Pair teams to minimize skill difference
-        while (teamsWithSkills.length >= 2) {
-            const team1Data = teamsWithSkills.shift();
-            
-            // Find the best match for team1 (closest skill total)
-            let bestMatchIndex = 0;
-            let smallestDiff = Infinity;
-            
-            for (let i = 0; i < teamsWithSkills.length; i++) {
-                const diff = Math.abs(team1Data.totalSkill - teamsWithSkills[i].totalSkill);
-                if (diff < smallestDiff) {
-                    smallestDiff = diff;
-                    bestMatchIndex = i;
-                }
-            }
-            
-            const team2Data = teamsWithSkills.splice(bestMatchIndex, 1)[0];
-            
-            matches.push({
-                team1: team1Data.team,
-                team2: team2Data.team,
-                type: 'doubles'
-            });
-        }
-        
-        return matches;
-    }
-
-    calculateMaxCapacity(playerCount, courtsCount) {
-        // Calculate the maximum players that can be accommodated
-        const maxDoublesCourts = courtsCount;
-        const maxDoublesPlayers = maxDoublesCourts * 4;
-        
-        // If we have fewer players than max doubles capacity, everyone can play
-        if (playerCount <= maxDoublesPlayers) {
-            return playerCount;
-        }
-        
-        // If we have more players, we need to optimize court usage
-        // Try different combinations of doubles and special matches
-        for (let doubleCourts = courtsCount; doubleCourts >= 0; doubleCourts--) {
-            const specialCourts = courtsCount - doubleCourts;
-            const doublesPlayers = doubleCourts * 4;
-            
-            // Special courts can handle 2-3 players each
-            const maxSpecialPlayers = specialCourts * 3; // Maximum case
-            const minSpecialPlayers = specialCourts * 2; // Minimum case
-            
-            const maxCapacity = doublesPlayers + maxSpecialPlayers;
-            const minCapacity = doublesPlayers + minSpecialPlayers;
-            
-            if (playerCount >= minCapacity && playerCount <= maxCapacity) {
-                return playerCount; // Everyone can play
-            }
-        }
-        
-        // Fallback to maximum possible
-        return maxDoublesPlayers + (courtsCount - maxDoublesCourts) * 3;
-    }
-
-    createDoublesMatches(playingPlayers, fixedTeams, courtsCount, genderFilter, skillBalance, sittingPlayers) {
-        const allMatches = [];
-        
-        // Create a combined pool of all teams (fixed + generated)
-        const allTeams = [];
-        
-        // Add fixed teams to the pool
-        allTeams.push(...fixedTeams);
-        
-        // Remove fixed team players from available pool
-        let availablePlayers = [...playingPlayers];
-        for (const fixedTeam of fixedTeams) {
-            availablePlayers = availablePlayers.filter(p => 
-                !fixedTeam.some(fp => fp.id === p.id)
-            );
-        }
-        
-        // Generate teams from remaining players and add to pool
-        while (availablePlayers.length >= 2) {
-            let team = null;
-            
-            if (genderFilter === 'mixed') {
-                team = this.createMixedTeam(availablePlayers, skillBalance);
-            } else if (genderFilter === 'same') {
-                team = this.createSameGenderTeam(availablePlayers, skillBalance);
-            } else {
-                team = this.createRandomTeam(availablePlayers, skillBalance);
-            }
-            
-            // If preferred team type fails, fall back to random
-            if (!team || team.length !== 2) {
-                team = this.createRandomTeam(availablePlayers, skillBalance);
-            }
-            
-            // If we successfully created a team, add it and remove players
-            if (team && team.length === 2) {
-                allTeams.push(team);
-                availablePlayers = availablePlayers.filter(p => 
-                    !team.some(tp => tp.id === p.id)
-                );
-            } else {
-                // Can't create any more teams, exit loop
-                break;
-            }
-        }
-        
-        // Create matches using appropriate pairing method based on skill balance
-        if (skillBalance === 'balanced') {
-            // For balanced teams, try to match teams with similar total skill
-            allMatches.push(...this.createBalancedMatches(allTeams));
-        } else {
-            // For random/similar individual skills, just randomly pair teams
-            const shuffledTeams = [...allTeams];
-            for (let i = shuffledTeams.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffledTeams[i], shuffledTeams[j]] = [shuffledTeams[j], shuffledTeams[i]];
-            }
-            
-            // Create matches by pairing shuffled teams
-            for (let i = 0; i < shuffledTeams.length - 1; i += 2) {
-                const team1 = shuffledTeams[i];
-                const team2 = shuffledTeams[i + 1];
-                
-                allMatches.push({
-                    team1: team1,
-                    team2: team2,
-                    type: 'doubles'
-                });
-            }
-        }
-        
-        // Randomly shuffle matches before assigning courts
-        const shuffledMatches = [...allMatches];
-        for (let i = shuffledMatches.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledMatches[i], shuffledMatches[j]] = [shuffledMatches[j], shuffledMatches[i]];
-        }
-        
-        // Assign court numbers to matches
-        const finalMatches = shuffledMatches.slice(0, courtsCount).map((match, index) => ({
-            court: index + 1,
-            team1: match.team1,
-            team2: match.team2,
-            type: match.type
-        }));
-        
-        // Add any remaining players to sitting list
-        sittingPlayers.push(...availablePlayers);
-        
-        // Add any leftover teams to sitting list
-        if (shuffledTeams.length % 2 !== 0) {
-            const leftoverTeam = shuffledTeams[shuffledTeams.length - 1];
-            sittingPlayers.push(...leftoverTeam);
-        }
-        
-        return {
-            matches: finalMatches,
-            sittingPlayers: sittingPlayers
-        };
-    }
-
-    createMixedMatchesSimple(doublesPlayers, specialPlayers, courtsCount, genderFilter, skillBalance, sittingPlayers) {
-        const matches = [];
-        
-        // Create doubles matches from doubles players
-        if (doublesPlayers.length >= 4) {
-            const selectedFixedTeams = this.getValidFixedTeams(doublesPlayers);
-            const doublesResult = this.createDoublesMatches(
-                doublesPlayers, 
-                selectedFixedTeams, 
-                Math.floor(doublesPlayers.length / 4), 
-                genderFilter, 
-                skillBalance, 
-                []
-            );
-            matches.push(...doublesResult.matches);
-        }
-        
-        // Create special match from special players
-        if (specialPlayers.length >= 2) {
-            const courtNumber = matches.length + 1;
-            const specialFixedTeams = this.getValidFixedTeams(specialPlayers);
-            
-            if (specialPlayers.length === 3) {
-                // Canadian doubles
-                if (specialFixedTeams.length > 0) {
-                    // Use fixed team as one side
-                    const fixedTeam = specialFixedTeams[0];
-                    const singlePlayer = specialPlayers.find(p => !fixedTeam.some(fp => fp.id === p.id));
-                    matches.push({
-                        court: courtNumber,
-                        team1: fixedTeam,
-                        team2: [singlePlayer],
-                        type: 'canadian'
-                    });
-                } else {
-                    // Random assignment
-                    const shuffled = [...specialPlayers];
-                    for (let i = shuffled.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                    }
-                    matches.push({
-                        court: courtNumber,
-                        team1: shuffled.slice(0, 2),
-                        team2: [shuffled[2]],
-                        type: 'canadian'
-                    });
-                }
-            } else if (specialPlayers.length === 2) {
-                // Singles (split fixed team if they ended up here)
-                matches.push({
-                    court: courtNumber,
-                    team1: [specialPlayers[0]],
-                    team2: [specialPlayers[1]],
-                    type: 'singles'
-                });
-            }
-        }
-        
-        return {
-            matches: matches,
-            sittingPlayers: sittingPlayers
-        };
-    }
-
-
-
-    createOpponentTeam(availablePlayers, fixedTeam, genderFilter, skillBalance) {
-        if (availablePlayers.length < 2) return null;
-        
-        // Try to create an appropriate opponent based on gender filter
-        if (genderFilter === 'mixed') {
-            return this.createMixedOpponent(availablePlayers, fixedTeam, skillBalance);
-        } else if (genderFilter === 'same') {
-            return this.createSameGenderOpponent(availablePlayers, fixedTeam, skillBalance);
-        } else {
-            // Random - just pick any 2 players
-            return this.selectBySkill(availablePlayers, 2, skillBalance);
-        }
-    }
-
-    createMixedOpponent(availablePlayers, fixedTeam, skillBalance) {
-        const males = availablePlayers.filter(p => p.gender === 'male');
-        const females = availablePlayers.filter(p => p.gender === 'female');
-        
-        // Try to create a mixed opponent team (1 male + 1 female)
-        if (males.length > 0 && females.length > 0) {
-            const selectedMale = this.selectBySkill(males, 1, skillBalance)[0];
-            const selectedFemale = this.selectBySkill(females, 1, skillBalance)[0];
-            return [selectedMale, selectedFemale];
-        }
-        
-        // Fallback to any 2 players
-        return this.selectBySkill(availablePlayers, 2, skillBalance);
-    }
-
-    createSameGenderOpponent(availablePlayers, fixedTeam, skillBalance) {
-        const fixedGenders = fixedTeam.map(p => p.gender);
-        const fixedGender = fixedGenders[0]; // Assume fixed team has consistent gender for same-gender mode
-        
-        // Try to find players of the same gender as the fixed team
-        const sameGenderPlayers = availablePlayers.filter(p => p.gender === fixedGender);
-        
-        if (sameGenderPlayers.length >= 2) {
-            return this.selectBySkill(sameGenderPlayers, 2, skillBalance);
-        }
-        
-        // Fallback to any 2 players
-        return this.selectBySkill(availablePlayers, 2, skillBalance);
-    }
-
-    createSingleMatch(availablePlayers, genderFilter, skillBalance) {
-        if (availablePlayers.length < 4) return null;
-        
-        let selectedPlayers = null;
-        
-        // First try to select 4 players based on gender preference
-        if (genderFilter === 'mixed') {
-            selectedPlayers = this.selectMixedDoublesPlayers(availablePlayers, skillBalance);
-        } else if (genderFilter === 'same') {
-            selectedPlayers = this.selectSameGenderPlayers(availablePlayers, skillBalance);
-        }
-        
-        // Fallback to random selection if preferred method fails
-        if (!selectedPlayers) {
-            selectedPlayers = this.selectBestAvailablePlayers(availablePlayers, skillBalance);
-        }
-        
-        if (!selectedPlayers || selectedPlayers.length !== 4) return null;
-        
-        // Now form teams based on skill balance preference
-        if (skillBalance === 'balanced') {
-            return this.formTeams(selectedPlayers, skillBalance);
-        } else {
-            // For random or similar skills, create teams based on gender preference
-            if (genderFilter === 'mixed') {
-                return this.formMixedTeams(selectedPlayers, skillBalance);
-            } else if (genderFilter === 'same') {
-                return this.formSameGenderTeams(selectedPlayers, skillBalance);
-            } else {
-                return this.formTeams(selectedPlayers, skillBalance);
-            }
-        }
-    }
-
-
-
     getValidFixedTeams(availablePlayers) {
         if (!this.fixedTeams || this.fixedTeams.length === 0) {
             return [];
@@ -1643,39 +1350,6 @@ class Jester {
         }
         
         return validTeams;
-    }
-
-
-    selectMixedDoublesPlayers(players, skillBalance) {
-        const males = players.filter(p => p.gender === 'male');
-        const females = players.filter(p => p.gender === 'female');
-
-        if (males.length < 2 || females.length < 2) {
-            return null;
-        }
-
-        const selectedMales = this.selectBySkill(males, 2, skillBalance);
-        const selectedFemales = this.selectBySkill(females, 2, skillBalance);
-
-        return [...selectedMales, ...selectedFemales];
-    }
-
-    selectSameGenderPlayers(players, skillBalance) {
-        const males = players.filter(p => p.gender === 'male');
-        const females = players.filter(p => p.gender === 'female');
-
-        if (males.length >= 4) {
-            return this.selectBySkill(males, 4, skillBalance);
-        } else if (females.length >= 4) {
-            return this.selectBySkill(females, 4, skillBalance);
-        }
-
-        return null;
-    }
-
-    selectBestAvailablePlayers(players, skillBalance) {
-        // Just select any 4 players using skill preference if possible
-        return this.selectBySkill(players, 4, skillBalance);
     }
 
     selectBySkill(players, count, skillBalance) {
@@ -1715,128 +1389,6 @@ class Jester {
         }
     }
 
-    formTeams(players, skillBalance) {
-        if (skillBalance === 'balanced') {
-            // Try to balance teams by skill, but always form teams
-            const sorted = [...players].sort((a, b) => b.skill - a.skill);
-            
-            // Calculate different pairing options and pick the most balanced
-            const option1 = {
-                team1: [sorted[0], sorted[3]],
-                team2: [sorted[1], sorted[2]]
-            };
-            const option2 = {
-                team1: [sorted[0], sorted[2]],
-                team2: [sorted[1], sorted[3]]
-            };
-            
-            // Calculate team skill differences for each option
-            const diff1 = Math.abs(
-                (option1.team1[0].skill + option1.team1[1].skill) - 
-                (option1.team2[0].skill + option1.team2[1].skill)
-            );
-            const diff2 = Math.abs(
-                (option2.team1[0].skill + option2.team1[1].skill) - 
-                (option2.team2[0].skill + option2.team2[1].skill)
-            );
-            
-            return diff1 <= diff2 ? option1 : option2;
-        } else {
-            // Random team formation using proper shuffle
-            const shuffled = [...players];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return {
-                team1: shuffled.slice(0, 2),
-                team2: shuffled.slice(2, 4)
-            };
-        }
-    }
-
-    formMixedTeams(players, skillBalance) {
-        const males = players.filter(p => p.gender === 'male');
-        const females = players.filter(p => p.gender === 'female');
-        
-        if (males.length >= 2 && females.length >= 2) {
-            // Ideal case: 2 males, 2 females - create M+F vs M+F
-            if (skillBalance === 'balanced') {
-                // Balance by combining male and female skills
-                const sortedMales = males.sort((a, b) => b.skill - a.skill);
-                const sortedFemales = females.sort((a, b) => b.skill - a.skill);
-                
-                // Try different combinations to balance team totals
-                const option1 = {
-                    team1: [sortedMales[0], sortedFemales[1]],
-                    team2: [sortedMales[1], sortedFemales[0]]
-                };
-                const option2 = {
-                    team1: [sortedMales[0], sortedFemales[0]],
-                    team2: [sortedMales[1], sortedFemales[1]]
-                };
-                
-                const diff1 = Math.abs(
-                    (option1.team1[0].skill + option1.team1[1].skill) - 
-                    (option1.team2[0].skill + option1.team2[1].skill)
-                );
-                const diff2 = Math.abs(
-                    (option2.team1[0].skill + option2.team1[1].skill) - 
-                    (option2.team2[0].skill + option2.team2[1].skill)
-                );
-                
-                return diff1 <= diff2 ? option1 : option2;
-            } else {
-                // Random pairing
-                const shuffledMales = [...males];
-                const shuffledFemales = [...females];
-                
-                for (let i = shuffledMales.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffledMales[i], shuffledMales[j]] = [shuffledMales[j], shuffledMales[i]];
-                }
-                for (let i = shuffledFemales.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffledFemales[i], shuffledFemales[j]] = [shuffledFemales[j], shuffledFemales[i]];
-                }
-                
-                return {
-                    team1: [shuffledMales[0], shuffledFemales[0]],
-                    team2: [shuffledMales[1], shuffledFemales[1]]
-                };
-            }
-        } else {
-            // Fallback to regular team formation if not enough of each gender
-            return this.formTeams(players, skillBalance);
-        }
-    }
-
-    formSameGenderTeams(players, skillBalance) {
-        const males = players.filter(p => p.gender === 'male');
-        const females = players.filter(p => p.gender === 'female');
-        
-        // Try to create same-gender matchups
-        if (males.length >= 4) {
-            // All males - create M+M vs M+M
-            return this.formTeams(males.slice(0, 4), skillBalance);
-        } else if (females.length >= 4) {
-            // All females - create F+F vs F+F  
-            return this.formTeams(females.slice(0, 4), skillBalance);
-        } else if (males.length >= 2 && females.length >= 2) {
-            // Mixed genders but try to keep teams same-gender: M+M vs F+F
-            const maleTeam = males.slice(0, 2);
-            const femaleTeam = females.slice(0, 2);
-            
-            return {
-                team1: maleTeam,
-                team2: femaleTeam
-            };
-        } else {
-            // Fallback to regular team formation
-            return this.formTeams(players, skillBalance);
-        }
-    }
-
     renderMatches(matches, sittingPlayers = []) {
         const container = document.getElementById('matches-display');
         const sittingContainer = document.getElementById('sitting-players');
@@ -1865,13 +1417,13 @@ class Jester {
                 <div class="match">
                     <div class="team">
                         <div class="team-players">
-                            ${match.team1.map(p => p.name).join(' & ')} (${match.type === 'doubles' && match.team1.length === 2 ? match.team1.reduce((sum, p) => sum + p.skill, 0) : (match.team1.reduce((sum, p) => sum + p.skill, 0) / match.team1.length).toFixed(1)})
+                            ${match.team1.map(p => this.escapeHtml(p.name)).join(' & ')} (${match.type === 'doubles' && match.team1.length === 2 ? match.team1.reduce((sum, p) => sum + p.skill, 0) : (match.team1.reduce((sum, p) => sum + p.skill, 0) / match.team1.length).toFixed(1)})
                         </div>
                     </div>
                     <div class="vs">vs</div>
                     <div class="team">
                         <div class="team-players">
-                            ${match.team2.map(p => p.name).join(' & ')} (${match.type === 'doubles' && match.team2.length === 2 ? match.team2.reduce((sum, p) => sum + p.skill, 0) : (match.team2.reduce((sum, p) => sum + p.skill, 0) / match.team2.length).toFixed(1)})
+                            ${match.team2.map(p => this.escapeHtml(p.name)).join(' & ')} (${match.type === 'doubles' && match.team2.length === 2 ? match.team2.reduce((sum, p) => sum + p.skill, 0) : (match.team2.reduce((sum, p) => sum + p.skill, 0) / match.team2.length).toFixed(1)})
                         </div>
                     </div>
                 </div>
@@ -1885,7 +1437,7 @@ class Jester {
                 <div class="sitting-header">Sitting Out (${sittingPlayers.length})</div>
                 <div class="sitting-list">
                     ${sittingPlayers.map(player => `
-                        <span class="sitting-player">${player.name} (${player.skill})</span>
+                        <span class="sitting-player">${this.escapeHtml(player.name)} (${player.skill})</span>
                     `).join('')}
                 </div>
             `;
@@ -1925,16 +1477,7 @@ class Jester {
         document.getElementById('bench-weighting-enabled').checked = this.benchWeightingEnabled;
     }
 
-    /* TIMER FUNCTIONALITY DISABLED - PRESERVED FOR FUTURE USE
     // Timer functionality
-    async requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            const permission = await Notification.requestPermission();
-            return permission === 'granted';
-        }
-        return Notification.permission === 'granted';
-    }
-
     setTimerPreset(minutes) {
         document.getElementById('custom-minutes').value = minutes;
         // Visual feedback for preset selection
@@ -1942,15 +1485,12 @@ class Jester {
         document.querySelector(`[data-minutes="${minutes}"]`).classList.add('active');
     }
 
-    startTimer() {
+    async startTimer() {
         const customMinutes = document.getElementById('custom-minutes').value;
         if (!customMinutes || customMinutes <= 0) {
             alert('Please enter a valid timer duration');
             return;
         }
-
-        // Request notification permission when starting timer
-        this.requestNotificationPermission();
 
         // Set up timer
         this.timer.duration = parseInt(customMinutes) * 60; // Convert to seconds
@@ -1970,16 +1510,18 @@ class Jester {
         }, 1000);
 
         this.updateTimerDisplay();
+        await this.acquireWakeLock();
     }
 
-    pauseTimer() {
+    async pauseTimer() {
         if (this.timer.isRunning) {
             this.timer.isPaused = !this.timer.isPaused;
-            
+
             if (this.timer.isPaused) {
                 clearInterval(this.timer.intervalId);
                 document.getElementById('pause-timer-btn').textContent = 'Resume';
                 document.getElementById('timer-label').textContent = 'Paused';
+                await this.releaseWakeLock();
             } else {
                 this.timer.intervalId = setInterval(() => {
                     this.tick();
@@ -1987,23 +1529,26 @@ class Jester {
                 document.getElementById('pause-timer-btn').textContent = 'Pause';
                 const minutes = Math.ceil(this.timer.remaining / 60);
                 document.getElementById('timer-label').textContent = `${minutes} min timer running`;
+                await this.acquireWakeLock();
             }
         }
     }
 
-    stopTimer() {
+    async stopTimer() {
         if (this.timer.intervalId) {
             clearInterval(this.timer.intervalId);
         }
-        
+
         this.timer.isRunning = false;
         this.timer.isPaused = false;
         this.timer.remaining = 0;
-        
+
         this.updateTimerButtons(false);
         document.getElementById('time-display').textContent = '00:00';
         document.getElementById('timer-label').textContent = 'Ready';
         document.getElementById('pause-timer-btn').textContent = 'Pause';
+        this.dismissAlarm();
+        await this.releaseWakeLock();
     }
 
     tick() {
@@ -2018,12 +1563,12 @@ class Jester {
 
         if (alert2Min && this.timer.remaining === 120 && !this.timer.alerts.twoMin) {
             this.timer.alerts.twoMin = true;
-            this.showAlert('2 minutes remaining!', 'Get ready to rotate courts');
+            this.playMidMatchAlert();
         }
 
         if (alert1Min && this.timer.remaining === 60 && !this.timer.alerts.oneMin) {
             this.timer.alerts.oneMin = true;
-            this.showAlert('1 minute remaining!', 'Finish your current point');
+            this.playMidMatchAlert();
         }
 
         if (this.timer.remaining <= 0) {
@@ -2046,8 +1591,7 @@ class Jester {
 
     onTimerComplete() {
         this.stopTimer();
-        this.showAlert('Time\'s up!', 'Round complete - time to rotate courts');
-        document.getElementById('timer-label').textContent = 'Time\'s up!';
+        this.showFinalAlarm();
     }
 
     updateVolumeDisplay(value) {
@@ -2062,29 +1606,39 @@ class Jester {
         this.playCustomVibration();
     }
 
-    showAlert(title, body) {
-        // Play custom sound
+    playMidMatchAlert() {
+        // Play the chosen sound 3 times with 1.5s gaps
+        let count = 0;
         this.playCustomSound();
-        
-        // Play custom vibration
         this.playCustomVibration();
-        
-        // Show notification
-        if (Notification.permission === 'granted') {
-            const vibrationPattern = this.getVibrationPattern();
-            const notification = new Notification(title, {
-                body: body,
-                icon: '/manifest.json',
-                badge: '/manifest.json',
-                vibrate: vibrationPattern,
-                requireInteraction: true
-            });
-            
-            // Auto-close notification after 10 seconds
-            setTimeout(() => {
-                notification.close();
-            }, 10000);
+        const interval = setInterval(() => {
+            count++;
+            if (count >= 2) {
+                clearInterval(interval);
+                return;
+            }
+            this.playCustomSound();
+            this.playCustomVibration();
+        }, 1500);
+    }
+
+    showFinalAlarm() {
+        document.getElementById('alarm-modal').style.display = 'flex';
+        document.getElementById('timer-label').textContent = 'Time\'s up!';
+        this.playCustomSound();
+        this.playCustomVibration();
+        this.alarmIntervalId = setInterval(() => {
+            this.playCustomSound();
+            this.playCustomVibration();
+        }, 2000);
+    }
+
+    dismissAlarm() {
+        if (this.alarmIntervalId) {
+            clearInterval(this.alarmIntervalId);
+            this.alarmIntervalId = null;
         }
+        document.getElementById('alarm-modal').style.display = 'none';
     }
 
     playCustomSound() {
@@ -2215,6 +1769,26 @@ class Jester {
         }
     }
 
+    async acquireWakeLock() {
+        if (!('wakeLock' in navigator)) return;
+        try {
+            this.wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {
+            console.log('Wake lock request failed:', err);
+        }
+    }
+
+    async releaseWakeLock() {
+        if (this.wakeLock) {
+            try {
+                await this.wakeLock.release();
+            } catch (err) {
+                console.log('Wake lock release failed:', err);
+            }
+            this.wakeLock = null;
+        }
+    }
+
     getVibrationPattern() {
         const patternType = document.getElementById('vibration-pattern').value;
         
@@ -2233,7 +1807,6 @@ class Jester {
                 return [300, 100, 300, 100, 300];
         }
     }
-    */
 }
 
 // Register service worker for PWA functionality

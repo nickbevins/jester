@@ -22,39 +22,47 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #1b5e20, #2e7d32);
-    color: white;
-    padding: 1rem;
-    text-align: center;
+    background: #2e7d32;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    height: 52px;
+    border-bottom: 1px solid #1b5e20;
 }
 
-.header h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
+.app-title {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 .nav {
     display: flex;
-    background: #404040;
-    border-bottom: 1px solid #555;
+    height: 100%;
 }
 
 .nav-btn {
-    flex: 1;
-    padding: 1rem;
+    padding: 0 3.0rem;
     border: none;
+    border-bottom: 2px solid transparent;
     background: transparent;
     cursor: pointer;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    color: #ccc;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    height: 100%;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.nav-btn:hover {
+    color: white;
 }
 
 .nav-btn.active {
-    background: #2d2d2d;
-    border-bottom: 2px solid #4caf50;
-    color: #4caf50;
+    color: white;
     font-weight: 600;
+    border-bottom-color: white;
 }
 
 .main {
@@ -330,6 +338,13 @@ body {
     font-size: 0.9rem;
 }
 
+.option-helper {
+    font-size: 0.78rem;
+    color: #999;
+    margin-top: 0.4rem;
+    min-height: 1em;
+}
+
 .form-group input {
     padding: 0.5rem;
     border: 1px solid #555;
@@ -432,7 +447,7 @@ body {
 
 #generate-matches-btn {
     padding: 0.75rem;
-    background: #ff9800;
+    background: #ff9900;
     color: white;
     border: none;
     border-radius: 6px;
@@ -661,7 +676,209 @@ body {
     padding: 2rem;
 }
 
-/* Timer Page Styles - REMOVED (code preserved for future use) */
+/* Alarm Modal */
+.alarm-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.alarm-modal-content {
+    background: #2d2d2d;
+    border: 2px solid #4caf50;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    width: 88%;
+    max-width: 340px;
+}
+
+.alarm-modal-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #4caf50;
+    margin-bottom: 0.5rem;
+}
+
+.alarm-modal-body {
+    color: #ccc;
+    font-size: 1rem;
+    margin-bottom: 1.75rem;
+}
+
+.alarm-dismiss-btn {
+    width: 100%;
+    padding: 1rem;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.alarm-dismiss-btn:hover,
+.alarm-dismiss-btn:active {
+    background: #45a049;
+}
+
+/* Timer Styles */
+.timer-display {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: #404040;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    border: 1px solid #555;
+}
+
+.time-display {
+    font-size: 4rem;
+    font-weight: 700;
+    color: #4caf50;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    line-height: 1;
+}
+
+.timer-label {
+    color: #ccc;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.timer-presets {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.preset-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: 2px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.preset-btn.active {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.timer-custom-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #555;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #404040;
+    color: #e0e0e0;
+    text-align: center;
+    margin-bottom: 0.75rem;
+    box-sizing: border-box;
+}
+
+.timer-custom-input::placeholder {
+    color: #888;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.timer-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.start-btn { background: #4caf50; color: white; }
+.start-btn:hover { background: #45a049; }
+.start-btn:disabled { background: #3a3a3a; color: #666; cursor: not-allowed; }
+
+.pause-btn { background: #ff9800; color: white; }
+.pause-btn:hover { background: #f57c00; }
+.pause-btn:disabled { background: #3a3a3a; color: #666; cursor: not-allowed; }
+
+.stop-btn { background: #f44336; color: white; }
+.stop-btn:hover { background: #d32f2f; }
+.stop-btn:disabled { background: #3a3a3a; color: #666; cursor: not-allowed; }
+
+.alert-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.alert-settings select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.alert-settings input[type="range"] {
+    width: 100%;
+    accent-color: #4caf50;
+    margin-top: 0.25rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.timer-test-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.timer-test-controls button {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #404040;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s ease;
+}
+
+.timer-test-controls button:hover {
+    background: #505050;
+}
 
 @media (max-width: 480px) {
     .app {
@@ -702,5 +919,4 @@ body {
         margin: 0.5rem 0;
     }
     
-    /* Timer mobile styles - REMOVED (code preserved for future use) */
 }
