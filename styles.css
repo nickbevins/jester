@@ -23,35 +23,35 @@ body {
 
 .header {
     background: #2e7d32;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1rem;
-    height: 52px;
+    padding: 0.35rem 1rem;
+    text-align: center;
     border-bottom: 1px solid #1b5e20;
 }
 
 .app-title {
     color: white;
-    font-size: 1.4rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .nav {
     display: flex;
-    height: 100%;
+    background: #383838;
+    border-bottom: 1px solid #555;
 }
 
 .nav-btn {
-    padding: 0 3.0rem;
+    flex: 1;
+    padding: 0.65rem 0.5rem;
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
     cursor: pointer;
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
-    height: 100%;
+    color: rgba(255, 255, 255, 0.65);
+    text-align: center;
     transition: color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -62,7 +62,7 @@ body {
 .nav-btn.active {
     color: white;
     font-weight: 600;
-    border-bottom-color: white;
+    border-bottom-color: #4caf50;
 }
 
 .main {
@@ -750,6 +750,13 @@ body {
 .timer-label {
     color: #ccc;
     font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.timer-screen-note {
+    font-size: 0.75rem;
+    color: #777;
+    text-align: center;
     margin-top: 0.5rem;
 }
 
