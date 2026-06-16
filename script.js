@@ -32,6 +32,7 @@ class Jester {
         this.initializeCourtSelection();
         this.updateOptionHelperText('gender', 'any');
         this.updateOptionHelperText('skill', 'random');
+        this.checkUrlImport();
     }
 
     setupEventListeners() {
@@ -553,7 +554,7 @@ class Jester {
                             const player = {
                                 id: Date.now() + index,
                                 name: values[0].replace(/^"(.*)"$/, '$1'), // Remove quotes
-                                gender: values[1].toLowerCase(),
+                                gender: this.normalizeGender(values[1]),
                                 skill: parseFloat(values[2]),
                                 active: values[3].toLowerCase() === 'true'
                             };
@@ -637,6 +638,81 @@ class Jester {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
+    }
+
+    normalizeGender(value) {
+        const v = String(value).trim().toLowerCase();
+        if (v === 'm' || v === 'male') return 'male';
+        if (v === 'f' || v === 'female') return 'female';
+        return null; // invalid
+    }
+
+    checkUrlImport() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('import');
+        if (!raw) return;
+
+        let parsed;
+        try {
+            parsed = JSON.parse(atob(raw));
+        } catch {
+            alert('Invalid import link — could not read player data.');
+            return;
+        }
+
+        if (!parsed || !Array.isArray(parsed.players) || parsed.players.length === 0) {
+            alert('Import link contained no players.');
+            return;
+        }
+
+        const imported = [];
+        let errorCount = 0;
+
+        parsed.players.forEach((p, index) => {
+            const name = String(p.name || '').trim();
+            const gender = this.normalizeGender(p.gender || '');
+            const skill = parseFloat(p.skill);
+
+            if (name && gender && skill >= 1 && skill <= 5) {
+                imported.push({
+                    id: Date.now() + index,
+                    name,
+                    gender,
+                    skill,
+                    active: p.active !== false // default true
+                });
+            } else {
+                errorCount++;
+            }
+        });
+
+        if (imported.length === 0) {
+            alert('Import link contained no valid players.');
+            return;
+        }
+
+        const replace = confirm(
+            `Import ${imported.length} player${imported.length !== 1 ? 's' : ''} from link?\n\n` +
+            'OK = Replace current roster\n' +
+            'Cancel = Merge with current roster'
+        );
+
+        if (replace) {
+            this.players = imported;
+        } else {
+            this.players.push(...imported);
+        }
+
+        this.savePlayers();
+        this.renderPlayers();
+
+        let message = `Imported ${imported.length} player${imported.length !== 1 ? 's' : ''}`;
+        if (errorCount > 0) message += `\n${errorCount} entries were skipped (invalid data)`;
+        alert(message);
+
+        // Clean the URL so a refresh doesn't re-trigger the import
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState(null, '', cleanUrl);
     }
 
     renderPlayers() {

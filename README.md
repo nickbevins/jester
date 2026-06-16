@@ -64,6 +64,55 @@ A Progressive Web App for generating balanced tennis matches (singles and double
   - **Individual**: Attempts to match players within 1 skill level
   - Team option is disabled (not applicable to singles)
 
+### Importing a Roster
+
+#### CSV Import
+Click **Import** on the Players tab and select a `.csv` file. The first row is treated as a header and skipped. Each subsequent row must have four columns:
+
+```
+Name, Gender, Skill Level, Active
+Alice Smith, female, 3.5, true
+Bob Jones, m, 2, false
+```
+
+- **Gender**: accepts `male`, `female`, `m`, or `f` (case-insensitive)
+- **Skill Level**: 1.0–5.0 in 0.5 increments
+- **Active**: `true` or `false` — whether the player is selected for the next round
+- Rows with invalid gender or out-of-range skill are skipped
+
+#### URL Import
+An external system (e.g., an event registration site) can link directly to Jester with a pre-loaded roster:
+
+```
+https://yourjester.app/?import=<base64-encoded-JSON>
+```
+
+The JSON payload format:
+
+```json
+{
+  "players": [
+    { "name": "Alice Smith", "gender": "f", "skill": 3.5 },
+    { "name": "Bob Jones",   "gender": "m", "skill": 2.0, "active": false }
+  ]
+}
+```
+
+- **gender**: accepts `male`, `female`, `m`, or `f` (case-insensitive)
+- **skill**: 1–5 (decimals supported)
+- **active**: optional, defaults to `true`
+
+To generate the link in JavaScript:
+```js
+const payload = { players: [
+  { name: "Alice Smith", gender: "f", skill: 3.5 },
+  { name: "Bob Jones",   gender: "m", skill: 2.0 }
+]};
+const url = `https://yourjester.app/?import=${btoa(JSON.stringify(payload))}`;
+```
+
+When Jester opens the link, it prompts whether to replace or merge with the existing roster, then cleans the URL so a page refresh doesn't re-trigger the import.
+
 ### Advanced Features
 - **Bench Weighting**: Configurable fair rotation system in Advanced Settings
   - Automatically tracks players who sit out or play Canadian doubles/singles
@@ -74,6 +123,7 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
 - **Bulk Operations**: Select/clear all players quickly
 - **CSV Export/Import**: Share rosters between devices or backup data
+- **URL Import**: Load a roster directly from a link (for integration with external registration systems)
 - **Timer Alerts**: Mid-match warnings at 2 and 1 minute remaining (sound plays 3 times); time's up triggers a looping alarm with a fullscreen modal requiring dismissal
 - **Alert Customization**: Choose from beep, chime, bell, or buzzer sounds with adjustable volume; choose vibration pattern (Android)
 
