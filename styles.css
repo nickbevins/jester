@@ -209,21 +209,21 @@ body {
 
 .edit-gender {
     padding: 0.25rem 0.5rem;
-    border: 1px solid #555;
+    border: 1px solid #444;
     border-radius: 4px;
     font-size: 0.8rem;
-    background: #7c2d12;
-    color: #fed7aa;
+    background: #2a2a2a;
+    color: #a0a0a0;
 }
 
 .edit-skill {
     width: 70px;
     padding: 0.25rem 0.35rem;
-    border: 1px solid #555;
+    border: 1px solid #444;
     border-radius: 4px;
     font-size: 0.8rem;
-    background: #1e3a8a;
-    color: #93c5fd;
+    background: #2a2a2a;
+    color: #7ab3cc;
     font-weight: 600;
 }
 
@@ -274,8 +274,8 @@ body {
 }
 
 .skill-badge {
-    background: #1e3a8a;
-    color: #93c5fd;
+    background: #2a2a2a;
+    color: #7ab3cc;
     padding: 0.3rem 0.5rem;
     border-radius: 4px;
     font-weight: 600;
@@ -290,8 +290,8 @@ body {
 }
 
 .gender-badge {
-    background: #7c2d12;
-    color: #fed7aa;
+    background: #2a2a2a;
+    color: #a0a0a0;
     padding: 0.3rem 0.5rem;
     border-radius: 4px;
     text-transform: capitalize;
