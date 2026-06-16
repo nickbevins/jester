@@ -666,10 +666,6 @@ class Jester {
                         <input type="text" class="edit-name" value="${this.escapeHtml(player.name)}"
                                onchange="app.updatePlayer(${player.id}, 'name', this.value)">
                         <div class="player-edit-controls">
-                            <select class="edit-gender" onchange="app.updatePlayer(${player.id}, 'gender', this.value)">
-                                <option value="male" ${player.gender === 'male' ? 'selected' : ''}>Male</option>
-                                <option value="female" ${player.gender === 'female' ? 'selected' : ''}>Female</option>
-                            </select>
                             <select class="edit-skill" onchange="app.updatePlayer(${player.id}, 'skill', this.value)">
                                 <option value="1" ${player.skill == 1 ? 'selected' : ''}>1.0</option>
                                 <option value="1.5" ${player.skill == 1.5 ? 'selected' : ''}>1.5</option>
@@ -680,6 +676,10 @@ class Jester {
                                 <option value="4" ${player.skill == 4 ? 'selected' : ''}>4.0</option>
                                 <option value="4.5" ${player.skill == 4.5 ? 'selected' : ''}>4.5</option>
                                 <option value="5" ${player.skill == 5 ? 'selected' : ''}>5.0</option>
+                            </select>
+                            <select class="edit-gender" onchange="app.updatePlayer(${player.id}, 'gender', this.value)">
+                                <option value="male" ${player.gender === 'male' ? 'selected' : ''}>Male</option>
+                                <option value="female" ${player.gender === 'female' ? 'selected' : ''}>Female</option>
                             </select>
                         </div>
                     </div>
