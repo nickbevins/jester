@@ -659,12 +659,15 @@ class Jester {
         try {
             // Try parsing as raw JSON first (URLSearchParams already decodes it)
             parsed = JSON.parse(raw);
-        } catch {
+        } catch (e1) {
             // If that fails, try base64 decoding (backward compatibility)
             try {
                 parsed = JSON.parse(atob(raw));
-            } catch {
-                alert('Invalid import link — could not read player data.');
+            } catch (e2) {
+                console.error('JSON parse error:', e1);
+                console.error('Base64 decode error:', e2);
+                console.error('Raw value:', raw);
+                alert('Invalid import link — could not read player data.\n\nCheck console for details.');
                 return;
             }
         }
