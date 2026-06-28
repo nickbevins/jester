@@ -1,4 +1,4 @@
-# 🎾 Jester
+# Jester
 
 A Progressive Web App for generating balanced tennis matches (singles and doubles) from your player roster.
 
@@ -16,7 +16,7 @@ A Progressive Web App for generating balanced tennis matches (singles and double
   - Skill balancing (random, individual similarity, or team balance)
   - Fixed teammate pairs (doubles mode only)
   - Bench weighting for fair rotation (configurable)
-- **CSV Import/Export**: Share and backup your player rosters
+- **CSV Import/Export & URL Sharing**: Share and backup rosters via CSV or shareable URL
 - **Mobile Optimized**: Responsive design with dark theme  
 - **PWA Features**: Installable app with offline support
 
@@ -80,38 +80,45 @@ Bob Jones, m, 2, false
 - **Active**: `true` or `false` — whether the player is selected for the next round
 - Rows with invalid gender or out-of-range skill are skipped
 
-#### URL Import
-An external system (e.g., an event registration site) can link directly to Jester with a pre-loaded roster:
+#### URL Import & Sharing
+Jester supports sharing rosters via URL using a highly compact array format. Due to browser URL length limits, Chrome and Edge support approximately 70-80 players per URL (with typical first names), while Firefox and Safari support much larger rosters (2000+ players).
+
+##### Share URL
+Click **Share URL** on the Players tab to generate a shareable link. The URL is automatically copied to your clipboard.
+
+##### Import Format
+URLs use a compact array format to minimize URL length for sharing large rosters:
 
 ```
 https://yourjester.app/?import=<base64-encoded-JSON>
 ```
 
-The JSON payload format:
-
+JSON payload structure (array of arrays):
 ```json
-{
-  "players": [
-    { "name": "Alice Smith", "gender": "f", "skill": 3.5 },
-    { "name": "Bob Jones",   "gender": "m", "skill": 2.0, "active": false }
-  ]
-}
+[
+  ["Alice", 1, 3.5],
+  ["Bob", 0, 4.0],
+  ["Charlie", 0, 2.5, 0]
+]
 ```
 
-- **gender**: accepts `male`, `female`, `m`, or `f` (case-insensitive)
-- **skill**: 1–5 (decimals supported)
-- **active**: optional, defaults to `true`
+Each player is an array with 3-4 elements:
+- **Index 0**: Player name (string)
+- **Index 1**: Gender (number: `1` = female, `0` = male)
+- **Index 2**: Skill level (number: 1.0–5.0, decimals supported)
+- **Index 3**: Active status (optional - omit for active players, include `0` for inactive)
 
-To generate the link in JavaScript:
+To generate an import link in JavaScript:
 ```js
-const payload = { players: [
-  { name: "Alice Smith", gender: "f", skill: 3.5 },
-  { name: "Bob Jones",   gender: "m", skill: 2.0 }
-]};
-const url = `https://yourjester.app/?import=${btoa(JSON.stringify(payload))}`;
+const players = [
+  ["Alice", 1, 3.5],      // female, active (default)
+  ["Bob", 0, 4.0],        // male, active (default)
+  ["Charlie", 0, 2.5, 0]  // male, inactive
+];
+const url = `https://yourjester.app/?import=${btoa(JSON.stringify(players))}`;
 ```
 
-When Jester opens the link, it prompts whether to replace or merge with the existing roster, then cleans the URL so a page refresh doesn't re-trigger the import.
+When Jester opens an import link, it prompts whether to replace or merge with the existing roster, then cleans the URL so a page refresh doesn't re-trigger the import.
 
 ### Advanced Features
 - **Bench Weighting**: Configurable fair rotation system in Advanced Settings
@@ -123,7 +130,7 @@ When Jester opens the link, it prompts whether to replace or merge with the exis
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
 - **Bulk Operations**: Select/clear all players quickly
 - **CSV Export/Import**: Share rosters between devices or backup data
-- **URL Import**: Load a roster directly from a link (for integration with external registration systems)
+- **URL Sharing**: Share rosters via compact URL (70-80 players in Chrome/Edge, 2000+ in Firefox/Safari)
 - **Timer Alerts**: Mid-match warnings at 2 and 1 minute remaining (sound plays 3 times); time's up triggers a looping alarm with a fullscreen modal requiring dismissal
 - **Alert Customization**: Choose from beep, chime, bell, or buzzer sounds with adjustable volume; choose vibration pattern (Android)
 
