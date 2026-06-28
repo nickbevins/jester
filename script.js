@@ -330,9 +330,14 @@ class Jester {
 
     toggleEditMode() {
         this.editMode = !this.editMode;
-        const btn = document.getElementById('edit-mode-btn');
-        btn.textContent = this.editMode ? 'View Mode' : 'Edit Mode';
-        btn.style.background = this.editMode ? '#ff9800' : '';
+        const editBtn = document.getElementById('edit-mode-btn');
+        editBtn.textContent = this.editMode ? 'View Mode' : 'Edit Mode';
+        editBtn.style.background = this.editMode ? '#ff9800' : '';
+
+        // Show/hide delete all button based on edit mode
+        const deleteAllBtn = document.getElementById('delete-all-btn');
+        deleteAllBtn.style.display = this.editMode ? '' : 'none';
+
         this.renderPlayers();
     }
 
