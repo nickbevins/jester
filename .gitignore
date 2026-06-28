@@ -1,25 +1,9 @@
 # User data files
 *.csv
 
-# Testing and development files (not for production)
-test-algorithms.js
-run-tests.html
-algorithm-test-report.md
-*-test-report-*.md
-verify-fix.js
-heterogeneity-test.js
-validation-test.js
-post-fix-analysis.md
-randomness-analysis.js
-validation-test.js
-bias-investigation.js
-randomness-fix.js
-final-analysis.md
-
 # OS generated files
 .DS_Store
 Thumbs.db
 
 # Editor files
 .vscode/
-.idea/

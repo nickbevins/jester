@@ -51,6 +51,7 @@ class Jester {
         document.getElementById('select-all-btn').addEventListener('click', () => this.selectAllPlayers());
         document.getElementById('clear-all-btn').addEventListener('click', () => this.clearAllPlayers());
         document.getElementById('edit-mode-btn').addEventListener('click', () => this.toggleEditMode());
+        document.getElementById('delete-all-btn').addEventListener('click', () => this.deleteAllPlayers());
 
         // Option button groups
         document.querySelectorAll('.option-btn').forEach(btn => {
@@ -306,6 +307,25 @@ class Jester {
         this.players.forEach(player => player.active = false);
         this.savePlayers();
         this.renderPlayers();
+    }
+
+    deleteAllPlayers() {
+        if (this.players.length === 0) {
+            alert('No players to delete');
+            return;
+        }
+
+        const confirmed = confirm(
+            `Are you sure you want to DELETE ALL ${this.players.length} player${this.players.length !== 1 ? 's' : ''}?\n\n` +
+            'This action cannot be undone!'
+        );
+
+        if (confirmed) {
+            this.players = [];
+            this.savePlayers();
+            this.renderPlayers();
+            alert('All players deleted');
+        }
     }
 
     toggleEditMode() {
@@ -1950,8 +1970,7 @@ class Jester {
         try {
             const compactPlayers = this.players.map(p => this.toCompactPlayer(p));
             const jsonStr = JSON.stringify(compactPlayers);
-            const base64 = btoa(jsonStr);
-            const url = window.location.origin + window.location.pathname + '?import=' + base64;
+            const url = window.location.origin + window.location.pathname + '?import=' + jsonStr;
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {

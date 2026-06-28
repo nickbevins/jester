@@ -81,16 +81,16 @@ Bob Jones, m, 2, false
 - Rows with invalid gender or out-of-range skill are skipped
 
 #### URL Import & Sharing
-Jester supports sharing rosters via URL using a highly compact array format. Due to browser URL length limits, Chrome and Edge support approximately 70-80 players per URL (with typical first names), while Firefox and Safari support much larger rosters (2000+ players).
+Jester supports sharing rosters via URL using a highly compact array format (raw JSON, no base64 encoding). Due to browser URL length limits, Chrome and Edge support approximately 100 players per URL (with typical first names), while Firefox and Safari support much larger rosters (3000+ players).
 
 ##### Share URL
 Click **Share URL** on the Players tab to generate a shareable link. The URL is automatically copied to your clipboard.
 
 ##### Import Format
-URLs use a compact array format to minimize URL length for sharing large rosters:
+URLs use a compact array format (raw JSON, no encoding) to minimize URL length for sharing large rosters:
 
 ```
-https://yourjester.app/?import=<base64-encoded-JSON>
+https://yourjester.app/?import=[["Alice",1,3.5],["Bob",0,4.0],["Charlie",0,2.5,0]]
 ```
 
 JSON payload structure (array of arrays):
@@ -115,7 +115,7 @@ const players = [
   ["Bob", 0, 4.0],        // male, active (default)
   ["Charlie", 0, 2.5, 0]  // male, inactive
 ];
-const url = `https://yourjester.app/?import=${btoa(JSON.stringify(players))}`;
+const url = `https://yourjester.app/?import=${JSON.stringify(players)}`;
 ```
 
 When Jester opens an import link, it prompts whether to replace or merge with the existing roster, then cleans the URL so a page refresh doesn't re-trigger the import.
@@ -128,9 +128,9 @@ When Jester opens an import link, it prompts whether to replace or merge with th
   - Resets after 2 hours of inactivity
   - Can be disabled for pure random selection
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
-- **Bulk Operations**: Select/clear all players quickly
+- **Bulk Operations**: Select/clear all players quickly, or delete entire roster with confirmation
 - **CSV Export/Import**: Share rosters between devices or backup data
-- **URL Sharing**: Share rosters via compact URL (70-80 players in Chrome/Edge, 2000+ in Firefox/Safari)
+- **URL Sharing**: Share rosters via compact URL (100+ players in Chrome/Edge, 3000+ in Firefox/Safari)
 - **Timer Alerts**: Mid-match warnings at 2 and 1 minute remaining (sound plays 3 times); time's up triggers a looping alarm with a fullscreen modal requiring dismissal
 - **Alert Customization**: Choose from beep, chime, bell, or buzzer sounds with adjustable volume; choose vibration pattern (Android)
 
