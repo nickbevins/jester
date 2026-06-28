@@ -4,12 +4,14 @@
  */
 
 const CACHE_NAME = 'jester-v1';
+// Determine base path (works both locally and on GitHub Pages)
+const basePath = self.location.pathname.substring(0, self.location.pathname.lastIndexOf('/'));
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js',
-  '/manifest.json'
+  basePath + '/',
+  basePath + '/index.html',
+  basePath + '/styles.css',
+  basePath + '/script.js',
+  basePath + '/manifest.json'
 ];
 
 // Install event - cache resources
