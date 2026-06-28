@@ -927,3 +927,76 @@ body {
     }
     
 }
+/* QR Modal Styles */
+.qr-modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-modal-content {
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.qr-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.qr-modal-header h2 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 1.5rem;
+}
+
+.qr-close-btn {
+    background: none;
+    border: none;
+    color: #e0e0e0;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.qr-close-btn:hover {
+    color: #4caf50;
+}
+
+.qr-modal-body {
+    text-align: center;
+}
+
+#qr-canvas {
+    max-width: 100%;
+    height: auto;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.qr-instructions {
+    color: #b0b0b0;
+    font-size: 0.9rem;
+    margin: 0;
+}

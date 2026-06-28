@@ -78,6 +78,9 @@ class Jester {
         document.getElementById('export-csv-btn').addEventListener('click', () => this.exportToCSV());
         document.getElementById('import-csv-btn').addEventListener('click', () => this.triggerImportCSV());
         document.getElementById('import-csv-input').addEventListener('change', (e) => this.importFromCSV(e));
+
+        // URL sharing
+        document.getElementById('share-url-btn').addEventListener('click', () => this.shareURL());
         
         // Timer controls
         document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -654,13 +657,33 @@ class Jester {
 
         let parsed;
         try {
-            parsed = JSON.parse(atob(raw));
+            // Try parsing as raw JSON first (URLSearchParams already decodes it)
+            parsed = JSON.parse(raw);
         } catch {
-            alert('Invalid import link — could not read player data.');
+            // If that fails, try base64 decoding (backward compatibility)
+            try {
+                parsed = JSON.parse(atob(raw));
+            } catch {
+                alert('Invalid import link — could not read player data.');
+                return;
+            }
+        }
+
+        // Support both new array format and old object format
+        let playersList;
+
+        if (Array.isArray(parsed)) {
+            // New format: direct array of players
+            playersList = parsed;
+        } else if (parsed.p && Array.isArray(parsed.p)) {
+            // Old format: {p:[...]}
+            playersList = parsed.p;
+        } else {
+            alert('Import link contained no players.');
             return;
         }
 
-        if (!parsed || !Array.isArray(parsed.players) || parsed.players.length === 0) {
+        if (playersList.length === 0) {
             alert('Import link contained no players.');
             return;
         }
@@ -668,19 +691,11 @@ class Jester {
         const imported = [];
         let errorCount = 0;
 
-        parsed.players.forEach((p, index) => {
-            const name = String(p.name || '').trim();
-            const gender = this.normalizeGender(p.gender || '');
-            const skill = parseFloat(p.skill);
+        playersList.forEach((p, index) => {
+            const player = this.fromCompactPlayer(p, index);
 
-            if (name && gender && skill >= 1 && skill <= 5) {
-                imported.push({
-                    id: Date.now() + index,
-                    name,
-                    gender,
-                    skill,
-                    active: p.active !== false // default true
-                });
+            if (player.name && player.gender && player.skill >= 1 && player.skill <= 5) {
+                imported.push(player);
             } else {
                 errorCount++;
             }
@@ -1883,6 +1898,77 @@ class Jester {
                 return [300, 100, 300, 100, 300];
         }
     }
+
+    // URL Sharing Methods
+    toCompactPlayer(player) {
+        // Array format: [name, gender, skill, active?]
+        // gender: 1=female, 0=male
+        // active: omit if true (1), only include if false (0)
+        const arr = [
+            player.name,
+            player.gender === 'female' ? 1 : 0,
+            player.skill
+        ];
+        if (!player.active) {
+            arr.push(0);
+        }
+        return arr;
+    }
+
+    fromCompactPlayer(compact, index) {
+        // Support both array format and old object format for backward compatibility
+        if (Array.isArray(compact)) {
+            // New array format: [name, gender, skill, active?]
+            return {
+                id: Date.now() + index,
+                name: compact[0],
+                gender: compact[1] === 1 ? 'female' : 'male',
+                skill: parseFloat(compact[2]),
+                active: compact[3] === 0 ? false : true  // default true if omitted
+            };
+        } else {
+            // Old object format: {n, g, s, a}
+            return {
+                id: Date.now() + index,
+                name: compact.n,
+                gender: compact.g === 'm' || compact.g === 'male' ? 'male' : 'female',
+                skill: parseFloat(compact.s),
+                active: compact.a !== 0
+            };
+        }
+    }
+    
+    shareURL() {
+        if (this.players.length === 0) {
+            alert('No players to share');
+            return;
+        }
+
+        try {
+            const compactPlayers = this.players.map(p => this.toCompactPlayer(p));
+            const jsonStr = JSON.stringify(compactPlayers);
+            const base64 = btoa(jsonStr);
+            const url = window.location.origin + window.location.pathname + '?import=' + base64;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Share URL copied to clipboard!\n\nURL length: ' + url.length + ' characters\nPlayers: ' + this.players.length);
+                }).catch(() => {
+                    this.showURLPrompt(url);
+                });
+            } else {
+                this.showURLPrompt(url);
+            }
+        } catch (error) {
+            console.error('Share URL error:', error);
+            alert('Error generating share URL');
+        }
+    }
+    
+    showURLPrompt(url) {
+        prompt('Copy this URL to share the roster:', url);
+    }
+
 }
 
 // Register service worker for PWA functionality
