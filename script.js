@@ -10,6 +10,8 @@ class Jester {
         this.fixedTeams = this.loadFixedTeams();
         this.benchHistory = this.loadBenchHistory();
         this.benchWeightingEnabled = this.loadBenchWeightingSetting();
+        this.partnerHistory = this.loadPartnerHistory();
+        this.partnerVarietyEnabled = this.loadPartnerVarietySetting();
         this.timer = {
             duration: 0,
             remaining: 0,
@@ -74,7 +76,9 @@ class Jester {
         document.getElementById('advanced-toggle-btn').addEventListener('click', () => this.toggleAdvancedPanel());
         document.getElementById('add-fixed-team-btn').addEventListener('click', () => this.addFixedTeam());
         document.getElementById('bench-weighting-enabled').addEventListener('change', (e) => this.updateBenchWeightingSetting(e.target.checked));
-        
+        document.getElementById('partner-variety-enabled').addEventListener('change', (e) => this.updatePartnerVarietySetting(e.target.checked));
+        document.getElementById('clear-history-btn').addEventListener('click', () => this.clearMatchHistory());
+
         // Import/Export
         document.getElementById('export-csv-btn').addEventListener('click', () => this.exportToCSV());
         document.getElementById('import-csv-btn').addEventListener('click', () => this.triggerImportCSV());
@@ -364,6 +368,7 @@ class Jester {
         if (!isVisible) {
             this.renderFixedTeams();
             this.updateBenchWeightingUI();
+            document.getElementById('partner-variety-enabled').checked = this.partnerVarietyEnabled;
         }
     }
 
@@ -400,7 +405,7 @@ class Jester {
 
     renderFixedTeams() {
         const container = document.getElementById('fixed-teams-list');
-        const activePlayers = this.players.filter(p => p.active);
+        const activePlayers = this.players.filter(p => p.active).sort((a, b) => a.name.localeCompare(b.name));
         
         if (this.fixedTeams.length === 0) {
             container.innerHTML = '<div class="empty-state">No fixed teams created</div>';
@@ -438,6 +443,32 @@ class Jester {
             team.players[index] = playerId ? parseInt(playerId) : null;
             this.saveFixedTeams();
         }
+    }
+
+    // Returns a message if fixed teams would schedule a player twice, otherwise null
+    getFixedTeamError() {
+        const activeIds = new Set(this.players.filter(p => p.active).map(p => p.id));
+        const nameOf = id => this.players.find(p => p.id === id).name;
+        const usedIds = new Set();
+
+        for (const team of this.fixedTeams || []) {
+            const [player1Id, player2Id] = (team && team.players) || [];
+
+            // Incomplete teams or teams with inactive players aren't used
+            if (!activeIds.has(player1Id) || !activeIds.has(player2Id)) continue;
+
+            if (player1Id === player2Id) {
+                return `${nameOf(player1Id)} is paired with themself in Fixed Teammates. Choose a different partner in Advanced Settings.`;
+            }
+            for (const id of [player1Id, player2Id]) {
+                if (usedIds.has(id)) {
+                    return `${nameOf(id)} is in more than one fixed team. Remove them from one team in Advanced Settings.`;
+                }
+                usedIds.add(id);
+            }
+        }
+
+        return null;
     }
 
     loadFixedTeams() {
@@ -501,6 +532,105 @@ class Jester {
         
         // Save to localStorage
         this.saveBenchHistory();
+    }
+
+    loadPartnerHistory() {
+        const saved = localStorage.getItem('tennis-partner-history');
+        if (!saved) return { lastMatchTime: null, history: [] };
+
+        const data = JSON.parse(saved);
+        const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
+        // Reset if more than 2 hours since last match
+        if (!data.lastMatchTime || (Date.now() - data.lastMatchTime) > twoHours) {
+            return { lastMatchTime: null, history: [] };
+        }
+
+        return data;
+    }
+
+    savePartnerHistory() {
+        localStorage.setItem('tennis-partner-history', JSON.stringify(this.partnerHistory));
+    }
+
+    pairKey(nameA, nameB) {
+        return [nameA, nameB].sort().join('\n');
+    }
+
+    // Partner and opponent pairings in a round, keyed by player name so they survive roster changes
+    getMatchPairings(matches) {
+        const partners = [];
+        const opponents = [];
+
+        matches.forEach(match => {
+            [match.team1, match.team2].forEach(team => {
+                for (let i = 0; i < team.length; i++) {
+                    for (let j = i + 1; j < team.length; j++) {
+                        partners.push(this.pairKey(team[i].name, team[j].name));
+                    }
+                }
+            });
+            match.team1.forEach(a => match.team2.forEach(b => opponents.push(this.pairKey(a.name, b.name))));
+        });
+
+        return { partners, opponents };
+    }
+
+    getRepeatScore(matches) {
+        const maxHistoryRounds = 12;
+        const { partners, opponents } = this.getMatchPairings(matches);
+        let score = 0;
+
+        this.partnerHistory.history.forEach((round, i) => {
+            // Recent rounds count more; repeat partners count more than repeat opponents
+            const recency = maxHistoryRounds - i;
+            partners.forEach(pair => { if (round.partners.includes(pair)) score += recency; });
+            opponents.forEach(pair => { if (round.opponents.includes(pair)) score += recency * 0.3; });
+        });
+
+        return score;
+    }
+
+    updatePartnerHistory(matches) {
+        const maxHistoryRounds = 12; // Long enough to cover a multi-round session
+
+        // Add current round to front of history, keeping only the recent rounds we care about
+        this.partnerHistory.history.unshift(this.getMatchPairings(matches));
+        this.partnerHistory.history = this.partnerHistory.history.slice(0, maxHistoryRounds);
+        this.partnerHistory.lastMatchTime = Date.now();
+
+        this.savePartnerHistory();
+    }
+
+    // Build several candidate arrangements and keep the one that repeats recent partners/opponents least
+    leastRepetitive(buildMatches) {
+        if (!this.partnerVarietyEnabled || !this.partnerHistory.history.length) {
+            return buildMatches();
+        }
+
+        const candidateCount = 200;
+        let best = null;
+        let bestScore = Infinity;
+
+        for (let i = 0; i < candidateCount && bestScore > 0; i++) {
+            const matches = buildMatches();
+            const score = this.getRepeatScore(matches);
+            if (score < bestScore) {
+                best = matches;
+                bestScore = score;
+            }
+        }
+
+        return best;
+    }
+
+    clearMatchHistory() {
+        if (!confirm('Clear bench and partner history? The next round will start fresh.')) return;
+
+        this.benchHistory = { lastMatchTime: null, history: [] };
+        this.partnerHistory = { lastMatchTime: null, history: [] };
+        this.saveBenchHistory();
+        this.savePartnerHistory();
     }
 
     saveFixedTeams() {
@@ -841,18 +971,28 @@ class Jester {
         const mode = modeElement.dataset.value;
         const genderFilter = genderElement.dataset.value;
         const skillBalance = skillElement.dataset.value;
+        const roundsElement = document.querySelector('.option-btn[data-option="rounds"].active');
+        const roundsCount = roundsElement ? parseInt(roundsElement.dataset.value) : 1;
+        let roundCourts = courtsCount;
+
+        if (!(courtsCount >= 1)) {
+            alert('Please enter at least 1 court');
+            return;
+        }
 
         if (mode === 'singles') {
             if (activePlayers.length < 2) {
                 alert('Need at least 2 active players for singles matches');
                 return;
             }
-            const result = this.createSinglesMatches(activePlayers, courtsCount, genderFilter, skillBalance);
-            this.updateBenchHistory(result.sittingPlayers.map(p => p.name), courtsCount);
-            this.renderMatches(result.matches, result.sittingPlayers);
         } else {
             if (activePlayers.length < 4) {
                 alert('Need at least 4 active players to generate doubles matches');
+                return;
+            }
+            const fixedTeamError = this.getFixedTeamError();
+            if (fixedTeamError) {
+                alert(fixedTeamError);
                 return;
             }
             // Calculate max courts we can use (allowing for special matches with 2-3 players)
@@ -869,31 +1009,46 @@ class Jester {
                 alert('Not enough players for any matches');
                 return;
             }
-
-            const result = this.createMatches(activePlayers, actualCourts, genderFilter, skillBalance);
-            
-            // For doubles, track players who didn't get regular doubles matches
-            const benchedPlayers = [];
-            const allPlayingPlayers = new Set();
-            
-            result.matches.forEach(match => {
-                if (match.type === 'doubles') {
-                    // Regular doubles players don't get benched
-                    match.team1.forEach(p => allPlayingPlayers.add(p.name));
-                    match.team2.forEach(p => allPlayingPlayers.add(p.name));
-                } else {
-                    // Canadian doubles and singles players get benched priority
-                    match.team1.forEach(p => benchedPlayers.push(p.name));
-                    match.team2.forEach(p => benchedPlayers.push(p.name));
-                }
-            });
-            
-            // Add sitting players to benched list
-            result.sittingPlayers.forEach(p => benchedPlayers.push(p.name));
-            
-            this.updateBenchHistory(benchedPlayers, actualCourts);
-            this.renderMatches(result.matches, result.sittingPlayers);
+            roundCourts = actualCourts;
         }
+
+        // Each round updates bench and partner history, so later rounds rotate sitters and vary partners
+        const rounds = [];
+        for (let i = 0; i < roundsCount; i++) {
+            rounds.push(mode === 'singles'
+                ? this.generateSinglesRound(activePlayers, roundCourts, genderFilter, skillBalance)
+                : this.generateDoublesRound(activePlayers, roundCourts, genderFilter, skillBalance));
+        }
+        this.renderRounds(rounds);
+    }
+
+    generateSinglesRound(activePlayers, courtsCount, genderFilter, skillBalance) {
+        const result = this.createSinglesMatches(activePlayers, courtsCount, genderFilter, skillBalance);
+        this.updateBenchHistory(result.sittingPlayers.map(p => p.name), courtsCount);
+        this.updatePartnerHistory(result.matches);
+        return result;
+    }
+
+    generateDoublesRound(activePlayers, courtsCount, genderFilter, skillBalance) {
+        const result = this.createMatches(activePlayers, courtsCount, genderFilter, skillBalance);
+
+        // For doubles, track players who didn't get regular doubles matches
+        const benchedPlayers = [];
+
+        result.matches.forEach(match => {
+            if (match.type !== 'doubles') {
+                // Canadian doubles and singles players get benched priority
+                match.team1.forEach(p => benchedPlayers.push(p.name));
+                match.team2.forEach(p => benchedPlayers.push(p.name));
+            }
+        });
+
+        // Add sitting players to benched list
+        result.sittingPlayers.forEach(p => benchedPlayers.push(p.name));
+
+        this.updateBenchHistory(benchedPlayers, courtsCount);
+        this.updatePartnerHistory(result.matches);
+        return result;
     }
 
     createMatches(players, courtsCount, genderFilter, skillBalance) {
@@ -946,7 +1101,8 @@ class Jester {
             } else {
                 // Odd number of players - prioritize recently benched players for play if weighting enabled
                 if (this.benchWeightingEnabled) {
-                    const weightedPlayers = players.map(player => ({
+                    // Shuffle first so ties (e.g. no bench history yet) are broken randomly
+                    const weightedPlayers = this.shuffleArray(players).map(player => ({
                         player,
                         weight: this.getBenchScore(player.name, courtsCount)
                     }));
@@ -981,6 +1137,10 @@ class Jester {
     }
 
     createSinglesMatchesFromPlayers(players, courtsCount, genderFilter, skillBalance) {
+        return this.leastRepetitive(() => this.buildSinglesMatches(players, courtsCount, genderFilter, skillBalance));
+    }
+
+    buildSinglesMatches(players, courtsCount, genderFilter, skillBalance) {
         const matches = [];
         let remainingPlayers = [...players];
         
@@ -1018,6 +1178,7 @@ class Jester {
         const shuffledMatches = this.shuffleArray(finalMatches);
         shuffledMatches.forEach((match, index) => {
             match.court = index + 1;
+            this.shuffleSides(match);
         });
         
         return shuffledMatches;
@@ -1062,45 +1223,41 @@ class Jester {
         return matches;
     }
 
-    findBestSkillPair(players) {
+    // canPair restricts who may be paired (e.g. opposite gender for mixed teams)
+    findBestSkillPair(players, canPair = () => true, maxSkillDiff = 1.0) {
         if (players.length < 2) return null;
-        
-        // Shuffle players first to add variety, then sort by skill
-        const shuffled = this.shuffleArray(players);
-        const sorted = shuffled.sort((a, b) => a.skill - b.skill);
-        
-        // Randomly pick a starting player from the first few to add variety
-        const startIndex = Math.floor(Math.random() * Math.min(3, sorted.length));
-        const player1 = sorted[startIndex];
-        
-        // Find all players within 1 skill level
-        const validMatches = sorted.filter(p => 
-            p.id !== player1.id && Math.abs(p.skill - player1.skill) <= 1.0
-        );
-        
+
+        // Shuffle players first so equal skills are in random order, then sort by skill
+        const sorted = this.shuffleArray(players).sort((a, b) => a.skill - b.skill);
+        const partnersOf = player => sorted.filter(p => p.id !== player.id && canPair(player, p));
+
+        // Start from the lowest-skill player (random among ties) so outliers aren't left stranded
+        const player1 = sorted.find(p => partnersOf(p).length > 0);
+        if (!player1) return null;
+        const partners = partnersOf(player1);
+
+        // Find all partners within the allowed skill difference
+        const validMatches = partners.filter(p => Math.abs(p.skill - player1.skill) <= maxSkillDiff);
+
         if (validMatches.length > 0) {
             // Randomly pick from valid matches to add variety
             const randomIndex = Math.floor(Math.random() * validMatches.length);
             return [player1, validMatches[randomIndex]];
-        } else {
-            // Fallback: find the closest skill match
-            let bestMatch = sorted.find(p => p.id !== player1.id);
-            let bestSkillDiff = Math.abs(player1.skill - bestMatch.skill);
-            
-            for (const player of sorted) {
-                if (player.id === player1.id) continue;
-                const skillDiff = Math.abs(player1.skill - player.skill);
-                if (skillDiff < bestSkillDiff) {
-                    bestMatch = player;
-                    bestSkillDiff = skillDiff;
-                }
-            }
-            
-            return [player1, bestMatch];
         }
+
+        // Fallback: the closest skill match
+        const bestMatch = partners.reduce((best, p) =>
+            Math.abs(p.skill - player1.skill) < Math.abs(best.skill - player1.skill) ? p : best
+        );
+        return [player1, bestMatch];
     }
 
 
+
+    // Randomize listing order so the weaker team or player isn't always shown first
+    shuffleSides(match) {
+        [match.team1, match.team2] = this.shuffleArray([this.shuffleArray(match.team1), this.shuffleArray(match.team2)]);
+    }
 
     shuffleArray(array) {
         const shuffled = [...array];
@@ -1112,8 +1269,10 @@ class Jester {
     }
 
     createAllDoublesMatches(players, courtsCount, genderFilter, skillBalance) {
-        const allTeams = [];
-        
+        return this.leastRepetitive(() => this.buildDoublesMatches(players, genderFilter, skillBalance));
+    }
+
+    buildDoublesMatches(players, genderFilter, skillBalance) {
         // Get valid fixed teams first
         const fixedTeams = this.getValidFixedTeams(players);
         
@@ -1318,6 +1477,7 @@ class Jester {
         // Reassign court numbers sequentially
         shuffledMatches.forEach((match, index) => {
             match.court = index + 1;
+            this.shuffleSides(match);
         });
         
         return shuffledMatches;
@@ -1413,6 +1573,9 @@ class Jester {
         const females = availablePlayers.filter(p => p.gender === 'female');
         
         if (males.length > 0 && females.length > 0) {
+            if (skillBalance === 'similar') {
+                return this.findBestSkillPair(availablePlayers, (a, b) => a.gender !== b.gender, 0.5);
+            }
             const selectedMale = this.selectBySkill(males, 1, skillBalance)[0];
             const selectedFemale = this.selectBySkill(females, 1, skillBalance)[0];
             return [selectedMale, selectedFemale];
@@ -1474,38 +1637,30 @@ class Jester {
     selectBySkill(players, count, skillBalance) {
         if (players.length < count) return null;
 
-        if (skillBalance === 'similar') {
-            // Try to find similar skill players, but be flexible
-            const sorted = [...players].sort((a, b) => a.skill - b.skill);
-            
-            // Try to find the best consecutive group, but if not enough variety, take what we can
-            if (sorted.length <= count) {
-                return sorted;
-            }
-            
-            // Look for the tightest skill range possible
-            let bestGroup = null;
-            let smallestRange = Infinity;
-            
-            for (let i = 0; i <= sorted.length - count; i++) {
-                const group = sorted.slice(i, i + count);
-                const range = group[group.length - 1].skill - group[0].skill;
-                if (range < smallestRange) {
-                    smallestRange = range;
-                    bestGroup = group;
-                }
-            }
-            
-            return bestGroup || sorted.slice(0, count);
-        } else {
-            // Truly random selection using Fisher-Yates shuffle
-            const shuffled = [...players];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled.slice(0, count);
+        if (skillBalance === 'similar' && count === 2) {
+            // Random partner within 0.5 skill (closest if none)
+            return this.findBestSkillPair(players, undefined, 0.5);
         }
+
+        // Truly random selection using Fisher-Yates shuffle
+        return this.shuffleArray(players).slice(0, count);
+    }
+
+    renderRounds(rounds) {
+        if (rounds.length === 1) {
+            this.renderMatches(rounds[0].matches, rounds[0].sittingPlayers);
+            return;
+        }
+
+        // Multiple rounds: each round shows its own courts and sitting-out list
+        document.getElementById('matches-display').innerHTML = rounds.map((round, index) => `
+            <div class="round">
+                <div class="round-header">Round ${index + 1}</div>
+                ${round.matches.map(match => this.getCourtHTML(match)).join('')}
+                ${round.sittingPlayers.length > 0 ? `<div class="sitting-players">${this.getSittingHTML(round.sittingPlayers)}</div>` : ''}
+            </div>
+        `).join('');
+        document.getElementById('sitting-players').innerHTML = '';
     }
 
     renderMatches(matches, sittingPlayers = []) {
@@ -1518,16 +1673,20 @@ class Jester {
             return;
         }
 
-        container.innerHTML = matches.map(match => {
-            // Determine match type and label
-            let matchTypeLabel = 'Doubles';
-            if (match.type === 'singles') {
-                matchTypeLabel = 'Singles';
-            } else if (match.type === 'canadian') {
-                matchTypeLabel = 'Canadian';
-            }
-            
-            return `
+        container.innerHTML = matches.map(match => this.getCourtHTML(match)).join('');
+        sittingContainer.innerHTML = sittingPlayers.length > 0 ? this.getSittingHTML(sittingPlayers) : '';
+    }
+
+    getCourtHTML(match) {
+        // Determine match type and label
+        let matchTypeLabel = 'Doubles';
+        if (match.type === 'singles') {
+            matchTypeLabel = 'Singles';
+        } else if (match.type === 'canadian') {
+            matchTypeLabel = 'Canadian';
+        }
+        
+        return `
             <div class="court">
                 <div class="court-info">
                     <div class="court-number">${match.court}</div>
@@ -1548,21 +1707,17 @@ class Jester {
                 </div>
             </div>
         `;
-        }).join('');
+    }
 
-        // Render sitting players
-        if (sittingPlayers.length > 0) {
-            sittingContainer.innerHTML = `
-                <div class="sitting-header">Sitting Out (${sittingPlayers.length})</div>
-                <div class="sitting-list">
-                    ${sittingPlayers.map(player => `
-                        <span class="sitting-player">${this.escapeHtml(player.name)} (${player.skill})</span>
-                    `).join('')}
-                </div>
-            `;
-        } else {
-            sittingContainer.innerHTML = '';
-        }
+    getSittingHTML(sittingPlayers) {
+        return `
+            <div class="sitting-header">Sitting Out (${sittingPlayers.length})</div>
+            <div class="sitting-list">
+                ${sittingPlayers.map(player => `
+                    <span class="sitting-player">${this.escapeHtml(player.name)} (${player.skill})</span>
+                `).join('')}
+            </div>
+        `;
     }
 
     loadPlayers() {
@@ -1590,6 +1745,16 @@ class Jester {
     updateBenchWeightingSetting(enabled) {
         this.benchWeightingEnabled = enabled;
         this.saveBenchWeightingSetting();
+    }
+
+    loadPartnerVarietySetting() {
+        const saved = localStorage.getItem('tennis-partner-variety');
+        return saved ? JSON.parse(saved) : true; // Default to enabled
+    }
+
+    updatePartnerVarietySetting(enabled) {
+        this.partnerVarietyEnabled = enabled;
+        localStorage.setItem('tennis-partner-variety', JSON.stringify(enabled));
     }
 
     updateBenchWeightingUI() {

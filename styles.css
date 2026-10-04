@@ -669,6 +669,47 @@ body {
     border: 1px solid #666;
 }
 
+.round {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.round + .round {
+    margin-top: 1rem;
+}
+
+.round-header {
+    font-weight: 600;
+    color: #66bb6a;
+    font-size: 1rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #555;
+}
+
+.round .sitting-players {
+    margin-top: 0;
+}
+
+.advanced-section + .advanced-section {
+    margin-top: 1.25rem;
+}
+
+#clear-history-btn {
+    margin-top: 0.75rem;
+    background: #505050;
+    color: #e0e0e0;
+    border: 1px solid #666;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+#clear-history-btn:hover {
+    background: #5a5a5a;
+}
+
 .empty-state {
     text-align: center;
     color: #888;

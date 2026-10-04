@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Nick Bevins. All rights reserved.
  */
 
-const CACHE_NAME = 'jester-v1';
+const CACHE_NAME = 'jester-v2';
 // Determine base path (works both locally and on GitHub Pages)
 const basePath = self.location.pathname.substring(0, self.location.pathname.lastIndexOf('/'));
 const urlsToCache = [

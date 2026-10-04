@@ -9,6 +9,8 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 - **Match Timer**: Countdown timer with mid-match alerts, customizable sounds, and vibration
 - **Smart Match Generation**: Create balanced matches with customizable preferences
 - **Bench Weighting System**: Fair rotation ensuring recently benched players get priority
+- **Partner Variety**: Avoids repeating recent partners and opponents, whether you generate one round at a time or several at once
+- **Multi-Round Generation**: Generate up to 6 rounds at once with rotating sit-outs and varied pairings
 - **Multiple Match Types**: Supports doubles, singles, and Canadian doubles (2v1)
 - **Flexible Options**: 
   - Match mode (singles or doubles)
@@ -42,8 +44,9 @@ A Progressive Web App for generating balanced tennis matches (singles and double
 4. Choose preferences:
    - **Gender**: Any, Mixed (male/female pairs - doubles only), or Same gender
    - **Matched Skill**: Random, Individual (similar skills), or Team (balanced teams - doubles only)
-5. Use Advanced Settings for fixed teammate pairs (doubles mode only)
-6. Click "Generate Matches"
+5. Choose **Rounds**: how many rounds to generate at once (1–6)
+6. Use Advanced Settings for fixed teammate pairs (doubles mode only), bench weighting, and partner variety
+7. Click "Generate Matches"
 
 ### Using the Timer
 1. Go to the **Timer** tab
@@ -127,7 +130,12 @@ When Jester opens an import link, it prompts whether to replace or merge with th
   - Uses exponential weighting (recent rounds weighted more heavily)
   - Resets after 2 hours of inactivity
   - Can be disabled for pure random selection
+- **Partner Variety**: Avoids recent partners and opponents (see [Partner Variety Algorithm](#partner-variety-algorithm))
+  - Can be disabled in Advanced Settings
+  - **Clear Match History** resets both bench and partner history to start a fresh session
 - **Fixed Teams**: Create permanent partnerships in Advanced Settings (doubles mode only)
+  - Player lists are alphabetical
+  - Matches won't generate if a player is paired with themself or appears in more than one fixed team
 - **Bulk Operations**: Select/clear all players quickly, or delete entire roster with confirmation
 - **CSV Export/Import**: Share rosters between devices or backup data
 - **URL Sharing**: Share rosters via compact URL (100+ players in Chrome/Edge, 3000+ in Firefox/Safari)
@@ -217,7 +225,7 @@ The app uses sophisticated algorithms to create balanced matches in both singles
    - **Same**: Creates all-male or all-female teams
    - **Any**: Any gender combination
 3. **Skill Balancing** (team formation):
-   - **Individual**: Partners are selected to have similar individual skill levels
+   - **Individual**: Starting from the lowest-skill player, a partner is chosen at random from those within 0.5 skill (closest available if none), so teams vary between rounds
    - **Random** and **Team**: Partners are selected randomly (same behavior at this stage)
 
 ### Match Pairing
@@ -254,10 +262,27 @@ The bench weighting system ensures fair rotation by tracking and prioritizing pl
 
 ### Example
 With bench history tracking last 10 rounds:
-- Alice benched 2 rounds ago: weight = 1.5¹ + jitter = ~1.8
-- Bob benched 1 round ago: weight = 1.5² + jitter = ~2.5
+- Bob benched last round: weight = 1 + 1.5¹⁰ + jitter ≈ 59
+- Alice benched 2 rounds ago: weight = 1 + 1.5⁹ + jitter ≈ 39
 - Charlie never benched: weight = 1.0 (base weight)
-- **Selection odds**: Bob has ~2.5x better odds than Charlie, Alice has ~1.8x better odds
+- **Selection odds**: each draw, Bob is ~59x and Alice ~39x as likely to be picked as Charlie, so recently benched players almost always play next round
+
+## Partner Variety Algorithm
+
+Partner variety keeps pairings fresh across rounds, whether rounds are generated one at a time or several at once.
+
+### How It Works
+1. **Tracking**: After each round, every partner pair (teammates) and opponent pair is recorded by player name, so history carries over when players are added or removed from the roster
+2. **Candidates**: Once bench weighting has decided who plays, the generator builds up to 200 candidate arrangements using the normal gender, skill, and fixed-team rules
+3. **Scoring**: Each candidate is scored against the last 12 rounds — a repeat partner costs more than a repeat opponent, and recent rounds cost more than older ones
+4. **Selection**: The lowest-scoring candidate is used (stopping early if one has no repeats at all)
+5. **History Management**: Auto-resets after 2 hours of inactivity, or manually with **Clear Match History**
+
+### Multiple Rounds
+Choosing more than one round simply generates rounds back to back. Each round updates bench and partner history before the next is built, so sit-outs rotate and partners vary across the set. Generating more rounds later continues from the same history.
+
+### Limits
+Restrictive settings leave fewer possible pairings, so some repeats become unavoidable sooner — for example Mixed + Individual (opposite gender and similar skill), or Same gender with only a few players of one gender. Fixed teams always play together by design.
 
 ## Key Algorithm Features
 - **Bench Weighting System**: Fair rotation with exponential weighting plus randomization to prevent predictable patterns
