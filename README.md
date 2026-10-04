@@ -181,7 +181,11 @@ jester/
 ├── styles.css          # Dark theme styling
 ├── script.js           # Core app logic and match generation
 ├── manifest.json       # PWA configuration
-├── sw.js              # Service worker for offline support
+├── sw.js              # Service worker: network-first, cached copy used offline
+├── apple-touch-icon.png # iOS home screen icon (180×180)
+├── favicon-32.png      # Browser tab icon (native 32×32 pixel art)
+├── icon-192.png        # App icon
+├── icon-512.png        # App icon (large)
 └── README.md          # This file
 ```
 
